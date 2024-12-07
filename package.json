@@ -1,0 +1,21 @@
+{
+  "name": "laser-mace",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --dts --format cjs,esm"
+  },
+  "keywords": [
+    "typescript",
+    "utility",
+    "library"
+  ],
+  "author": "Ka1n0s",
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^7.2.0",
+    "typescript": "^5.7.2"
+  }
+}

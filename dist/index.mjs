@@ -89,7 +89,86 @@ function rng(low, high, decimals = null) {
 var greetLaserMace = () => {
   return "Hello from LaserMace!";
 };
+
+// src/lazyState.ts
+function createLazyState(definitions) {
+  const internalState = {};
+  const cache = {};
+  const timestamps = {};
+  const invalidateDependentCaches = (key) => {
+    for (const [depKey, definition] of Object.entries(definitions)) {
+      if (definition && definition[3]?.includes(key)) {
+        delete cache[depKey];
+        delete timestamps[depKey];
+      }
+    }
+  };
+  const resolveValue = (computeFn) => {
+    const value = computeFn(proxy);
+    return value instanceof Promise ? value : value;
+  };
+  const proxy = new Proxy({}, {
+    get(_, prop) {
+      if (typeof prop !== "string" || !(prop in definitions)) {
+        throw new Error(`Property '${String(prop)}' is not defined.`);
+      }
+      const definition = definitions[prop];
+      if (definition === null) {
+        return internalState[prop];
+      }
+      const [mode, computeFn, expirationMs] = definition;
+      if (mode === "always") {
+        return resolveValue(computeFn);
+      }
+      if (mode === "once") {
+        if (!(prop in cache)) {
+          cache[prop] = resolveValue(computeFn);
+        }
+        return cache[prop];
+      }
+      if (mode === "timed") {
+        const now = Date.now();
+        const lastUpdated = timestamps[prop] || 0;
+        if (!(prop in cache) || now - lastUpdated > (expirationMs || 0)) {
+          cache[prop] = resolveValue(computeFn);
+          timestamps[prop] = now;
+        }
+        return cache[prop];
+      }
+      throw new Error(`Invalid cache mode: ${mode}`);
+    },
+    set(_, prop, value) {
+      if (typeof prop !== "string" || !(prop in definitions)) {
+        throw new Error(`Property '${String(prop)}' is not defined.`);
+      }
+      const definition = definitions[prop];
+      if (definition === null) {
+        internalState[prop] = value;
+        invalidateDependentCaches(prop);
+        return true;
+      }
+      throw new Error(`Cannot set value for computed property '${prop}'`);
+    },
+    ownKeys() {
+      return Reflect.ownKeys(definitions);
+    },
+    has(_, prop) {
+      return typeof prop === "string" && prop in definitions;
+    },
+    getOwnPropertyDescriptor(_, prop) {
+      if (typeof prop === "string" && prop in definitions) {
+        return {
+          enumerable: true,
+          configurable: true
+        };
+      }
+      return void 0;
+    }
+  });
+  return proxy;
+}
 export {
+  createLazyState,
   currentLogLevel,
   greetLaserMace,
   log,

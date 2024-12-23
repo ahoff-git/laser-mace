@@ -126,4 +126,52 @@ declare function rng(low: number, high: number, decimals?: number | null): numbe
  */
 declare const greetLaserMace: () => string;
 
-export { currentLogLevel, greetLaserMace, log, logLevels, rng, storage };
+type CacheMode = "always" | "once" | "timed";
+/**
+ * Describes the definition of the lazy state object.
+ * Each property can be:
+ * - `null`: A plain state property that can be updated directly.
+ * - `[CacheMode, ComputeFunction, Expiration?, Dependencies?]`: A computed property.
+ */
+type LazyStateDefinition<T extends Record<string, any>> = {
+    [K in keyof T]: [CacheMode, (context: T) => Promise<T[K]> | T[K], number?, (keyof T)[]?] | null;
+};
+/**
+ * Creates a lazy state object with defined plain and computed properties.
+ *
+ * @template T - The type of the state object.
+ * @param definitions - An object that defines the properties of the lazy state:
+ *  - `null` for plain state properties.
+ *  - `[CacheMode, ComputeFunction, Expiration?, Dependencies?]` for computed properties:
+ *    - `CacheMode`: Determines how the computed property is cached. Options:
+ *      - `"always"`: Recompute the value every time it's accessed.
+ *      - `"once"`: Compute the value once and cache it permanently.
+ *      - `"timed"`: Cache the value for a specific duration.
+ *    - `ComputeFunction`: A function that computes the property value based on the current state.
+ *    - `Expiration` (optional): For `"timed"` mode, specifies the cache duration in milliseconds.
+ *    - `Dependencies` (optional): A list of dependent property keys that invalidate this cache when updated.
+ * @returns A proxy object representing the lazy state with:
+ *  - Writable plain properties.
+ *  - Read-only computed properties.
+ *
+ * @example
+ * const state = createLazyState<{
+ *   firstName: string;
+ *   lastName: string;
+ *   fullName: string;
+ *   location: Promise<string>;
+ * }>({
+ *   firstName: null, // Plain state
+ *   lastName: null, // Plain state
+ *   fullName: ["once", (context) => `${context.firstName} ${context.lastName}`], // Computed property
+ *   location: ["timed", async () => "Seattle", 5000], // Computed property with caching
+ * });
+ *
+ * state.firstName = "John";
+ * state.lastName = "Doe";
+ * console.log(state.fullName); // "John Doe"
+ * console.log(await state.location); // "Seattle"
+ */
+declare function createLazyState<T extends Record<string, any>>(definitions: LazyStateDefinition<T>): T;
+
+export { createLazyState, currentLogLevel, greetLaserMace, log, logLevels, rng, storage };

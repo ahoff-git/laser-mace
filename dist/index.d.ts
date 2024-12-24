@@ -174,4 +174,13 @@ type LazyStateDefinition<T extends Record<string, any>> = {
  */
 declare function createLazyState<T extends Record<string, any>>(definitions: LazyStateDefinition<T>): T;
 
-export { createLazyState, currentLogLevel, greetLaserMace, log, logLevels, rng, storage };
+interface ChronoTrigger {
+    Start: () => void;
+    Stop: () => void;
+    setLoop: (loopFunction: (time: number) => void) => void;
+    runAt: (fps: number, callback: () => void) => void;
+    CurrentFPS: () => number;
+}
+declare const CT: ChronoTrigger;
+
+export { CT, createLazyState, currentLogLevel, greetLaserMace, log, logLevels, rng, storage };

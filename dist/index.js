@@ -20,6 +20,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.ts
 var src_exports = {};
 __export(src_exports, {
+  CT: () => CT,
   createLazyState: () => createLazyState,
   currentLogLevel: () => currentLogLevel,
   greetLaserMace: () => greetLaserMace,
@@ -199,8 +200,59 @@ function createLazyState(definitions) {
   });
   return proxy;
 }
+
+// src/chronoTrigger.ts
+function createChronoTrigger() {
+  const lastRunTimes = /* @__PURE__ */ new Map();
+  let loop = null;
+  let running = false;
+  let fps = 0;
+  let lastFrameTime = 0;
+  const Start = () => {
+    if (typeof loop !== "function") {
+      throw new Error("CT.Loop must be defined before calling CT.Start()");
+    }
+    running = true;
+    const frame = (time) => {
+      if (running) {
+        if (lastFrameTime > 0) {
+          const delta = time - lastFrameTime;
+          fps = Math.round(1e3 / delta);
+        }
+        lastFrameTime = time;
+        loop(time);
+        requestAnimationFrame(frame);
+      }
+    };
+    requestAnimationFrame(frame);
+  };
+  const Stop = () => {
+    running = false;
+  };
+  const setLoop = (loopFunction) => {
+    loop = loopFunction;
+  };
+  const runAt = (fpsTarget, callback) => {
+    if (!lastRunTimes.has(fpsTarget)) {
+      lastRunTimes.set(fpsTarget, 0);
+    }
+    const now = performance.now();
+    const interval = 1e3 / fpsTarget;
+    if (fpsTarget > fps && fps > 0) {
+      log(logLevels.warning, `Requested FPS (${fpsTarget}) exceeds current game FPS (${fps}). Performance may degrade.`);
+    }
+    if (now - (lastRunTimes.get(fpsTarget) || 0) >= interval) {
+      lastRunTimes.set(fpsTarget, now);
+      callback();
+    }
+  };
+  const CurrentFPS = () => fps;
+  return { Start, Stop, setLoop, runAt, CurrentFPS };
+}
+var CT = createChronoTrigger();
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  CT,
   createLazyState,
   currentLogLevel,
   greetLaserMace,

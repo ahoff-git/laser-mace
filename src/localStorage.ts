@@ -18,7 +18,7 @@ export const storage = (() => {
          * storage.save('theme', 'dark');
          */
         save: (key: string, value: any) => {
-            log(logLevels.debug, `Saving key "${key}" with value:`, value);
+            log(logLevels.debug, `Saving key "${key}" with value:`, ["localStorage", "save"], value);
             localStorage.setItem(key, JSON.stringify(value));
         },
 
@@ -40,15 +40,15 @@ export const storage = (() => {
         load: (key: string, defaultValue: any = null) => {
             const value = localStorage.getItem(key);
             if (value === null) {
-                log(logLevels.warning, `No value found for key "${key}". Returning default value:`, defaultValue);
+                log(logLevels.warning, `No value found for key "${key}". Returning default value:`, ["localStorage", "load"], defaultValue);
                 return defaultValue;
             }
 
             try {
-                log(logLevels.debug, `Value found for key "${key}". Returning value:`, value);
+                log(logLevels.debug, `Value found for key "${key}". Returning value:`, ["localStorage", "load"], value);
                 return JSON.parse(value); // Parse JSON if possible
             } catch (err) {
-                log(logLevels.error, `Failed to parse value for key "${key}":`, value, err);
+                log(logLevels.error, `Failed to parse value for key "${key}":`, ["localStorage", "load"], value, err);
                 return value; // Return raw string if parsing fails
             }
         },
@@ -64,7 +64,7 @@ export const storage = (() => {
          */
         listKeys: (): string[] => {
             const keys = Object.keys(localStorage);
-            log(logLevels.debug, `Available keys in localStorage:`, keys);
+            log(logLevels.debug, `Available keys in localStorage:`, ["localStorage", "listKeys"], keys);
             return keys;
         }
     };

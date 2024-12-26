@@ -21,8 +21,11 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var src_exports = {};
 __export(src_exports, {
   Crono: () => Crono,
+  blockKeywords: () => blockKeywords,
   createLazyState: () => createLazyState,
   currentLogLevel: () => currentLogLevel,
+  filterKeywords: () => filterKeywords,
+  getKeyNameByValue: () => getKeyNameByValue,
   greetLaserMace: () => greetLaserMace,
   log: () => log,
   logLevels: () => logLevels,
@@ -45,7 +48,7 @@ var storage = (() => {
      * storage.save('theme', 'dark');
      */
     save: (key, value) => {
-      log(logLevels.debug, `Saving key "${key}" with value:`, value);
+      log(logLevels.debug, `Saving key "${key}" with value:`, ["localStorage", "save"], value);
       localStorage.setItem(key, JSON.stringify(value));
     },
     /**
@@ -66,14 +69,14 @@ var storage = (() => {
     load: (key, defaultValue = null) => {
       const value = localStorage.getItem(key);
       if (value === null) {
-        log(logLevels.warning, `No value found for key "${key}". Returning default value:`, defaultValue);
+        log(logLevels.warning, `No value found for key "${key}". Returning default value:`, ["localStorage", "load"], defaultValue);
         return defaultValue;
       }
       try {
-        log(logLevels.debug, `Value found for key "${key}". Returning value:`, value);
+        log(logLevels.debug, `Value found for key "${key}". Returning value:`, ["localStorage", "load"], value);
         return JSON.parse(value);
       } catch (err) {
-        log(logLevels.error, `Failed to parse value for key "${key}":`, value, err);
+        log(logLevels.error, `Failed to parse value for key "${key}":`, ["localStorage", "load"], value, err);
         return value;
       }
     },
@@ -88,7 +91,7 @@ var storage = (() => {
      */
     listKeys: () => {
       const keys = Object.keys(localStorage);
-      log(logLevels.debug, `Available keys in localStorage:`, keys);
+      log(logLevels.debug, `Available keys in localStorage:`, ["localStorage", "listKeys"], keys);
       return keys;
     }
   };
@@ -101,12 +104,19 @@ var logLevels = {
   warning: 2,
   debug: 3
 };
-var currentLogLevel = logLevels.debug;
-function log(level, message, ...data) {
-  if (currentLogLevel >= level) {
-    const method = level === logLevels.error ? "error" : level === logLevels.warning ? "warn" : "log";
-    console[method](message, ...data);
-  }
+var currentLogLevel = { value: logLevels.debug };
+var filterKeywords = [];
+var blockKeywords = [];
+function log(level, message, keywords = [], ...data) {
+  if (currentLogLevel.value < level)
+    return;
+  if (blockKeywords.some((keyword) => keywords.includes(keyword)))
+    return;
+  if (filterKeywords.length > 0 && !filterKeywords.some((keyword) => keywords.includes(keyword)))
+    return;
+  const method = level === logLevels.error ? "error" : level === logLevels.warning ? "warn" : "log";
+  const keywordInfo = keywords.length > 0 ? ` [Keywords: ${keywords.join(", ")}]` : "";
+  console[method](`${message}${keywordInfo}`, ...data);
 }
 
 // src/random.ts
@@ -239,7 +249,7 @@ function createChronoTrigger() {
     const now = performance.now();
     const interval = 1e3 / fpsTarget;
     if (fpsTarget > fps && fps > 0) {
-      log(logLevels.warning, `Requested FPS (${fpsTarget}) exceeds current game FPS (${fps}). Performance may degrade.`);
+      log(logLevels.warning, `Requested FPS (${fpsTarget}) exceeds current game FPS (${fps}). Performance may degrade.`, ["runAt, Crono"]);
     }
     if (now - (lastRunTimes.get(fpsTarget) || 0) >= interval) {
       lastRunTimes.set(fpsTarget, now);
@@ -250,11 +260,19 @@ function createChronoTrigger() {
   return { Start, Stop, setLoop, runAt, CurrentFPS };
 }
 var Crono = createChronoTrigger();
+
+// src/utils.ts
+function getKeyNameByValue(obj, value) {
+  return Object.entries(obj).find(([, v]) => v === value)?.[0] || "unknown";
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   Crono,
+  blockKeywords,
   createLazyState,
   currentLogLevel,
+  filterKeywords,
+  getKeyNameByValue,
   greetLaserMace,
   log,
   logLevels,

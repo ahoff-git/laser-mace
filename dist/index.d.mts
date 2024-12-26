@@ -66,26 +66,38 @@ declare const logLevels: {
  * @example
  * currentLogLevel = logLevels.warning; // Show only warnings and errors
  */
-declare let currentLogLevel: number;
+declare const currentLogLevel: {
+    value: number;
+};
+/**
+ * Optional keywords for filtering log messages.
+ *
+ * - `filterKeywords`: Only log messages containing these keywords (empty means include all).
+ * - `blockKeywords`: Do not log messages containing these keywords.
+ */
+declare const filterKeywords: string[];
+declare const blockKeywords: string[];
 /**
  * Logs a message to the console based on the specified log level.
  *
  * - Automatically uses `console.error`, `console.warn`, or `console.log` depending on the log level.
  * - Only logs messages if the specified `level` is less than or equal to the current `currentLogLevel`.
+ * - Filters messages based on `filterKeywords` and `blockKeywords`.
  *
  * @param {number} level - The log level for the message (e.g., `logLevels.debug` or `logLevels.error`).
  * @param {string} message - The message to log.
+ * @param {string[]} [keywords=[]] - Keywords associated with the message for filtering (optional).
  * @param {...unknown[]} data - Additional data to log (optional).
  *
  * @example
  * // Example 1: Log a debug message
- * log(logLevels.debug, "This is a debug message", { someData: 42 });
+ * log(logLevels.debug, "This is a debug message", ["network"], { someData: 42 });
  *
  * @example
  * // Example 2: Log an error message
- * log(logLevels.error, "Something went wrong", new Error("Oops!"));
+ * log(logLevels.error, "Something went wrong", ["critical"], new Error("Oops!"));
  */
-declare function log(level: number, message: string, ...data: unknown[]): void;
+declare function log(level: number, message: string, keywords?: string[], ...data: unknown[]): void;
 
 /**
  * Generates a random number within the specified range, supporting precision.
@@ -183,4 +195,13 @@ interface ChronoTrigger {
 }
 declare const Crono: ChronoTrigger;
 
-export { Crono, createLazyState, currentLogLevel, greetLaserMace, log, logLevels, rng, storage };
+/**
+ * Gets the key name associated with a specific value in an object.
+ *
+ * @param {Record<string, unknown>} obj - The object to search.
+ * @param {unknown} value - The value to find the associated key for.
+ * @returns {string} The key name if found, or "unknown" if not found.
+ */
+declare function getKeyNameByValue(obj: Record<string, unknown>, value: unknown): string;
+
+export { Crono, blockKeywords, createLazyState, currentLogLevel, filterKeywords, getKeyNameByValue, greetLaserMace, log, logLevels, rng, storage };

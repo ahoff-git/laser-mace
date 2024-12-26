@@ -52,7 +52,7 @@ function createChronoTrigger(): ChronoTrigger {
         const interval = 1000 / fpsTarget; // Milliseconds per frame
 
         if (fpsTarget > fps && fps > 0) {
-            log(logLevels.warning, `Requested FPS (${fpsTarget}) exceeds current game FPS (${fps}). Performance may degrade.`);
+            log(logLevels.warning, `Requested FPS (${fpsTarget}) exceeds current game FPS (${fps}). Performance may degrade.`, ["runAt, Crono"]);
         }
 
         if (now - (lastRunTimes.get(fpsTarget) || 0) >= interval) {

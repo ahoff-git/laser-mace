@@ -216,9 +216,9 @@ function createChronoTrigger() {
   const CurrentFPS = () => fps;
   return { Start, Stop, setLoop, runAt, CurrentFPS };
 }
-var CT = createChronoTrigger();
+var Crono = createChronoTrigger();
 export {
-  CT,
+  Crono,
   createLazyState,
   currentLogLevel,
   greetLaserMace,

@@ -181,6 +181,6 @@ interface ChronoTrigger {
     runAt: (fps: number, callback: () => void) => void;
     CurrentFPS: () => number;
 }
-declare const CT: ChronoTrigger;
+declare const Crono: ChronoTrigger;
 
-export { CT, createLazyState, currentLogLevel, greetLaserMace, log, logLevels, rng, storage };
+export { Crono, createLazyState, currentLogLevel, greetLaserMace, log, logLevels, rng, storage };

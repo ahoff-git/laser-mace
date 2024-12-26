@@ -20,7 +20,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.ts
 var src_exports = {};
 __export(src_exports, {
-  CT: () => CT,
+  Crono: () => Crono,
   createLazyState: () => createLazyState,
   currentLogLevel: () => currentLogLevel,
   greetLaserMace: () => greetLaserMace,
@@ -249,10 +249,10 @@ function createChronoTrigger() {
   const CurrentFPS = () => fps;
   return { Start, Stop, setLoop, runAt, CurrentFPS };
 }
-var CT = createChronoTrigger();
+var Crono = createChronoTrigger();
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  CT,
+  Crono,
   createLazyState,
   currentLogLevel,
   greetLaserMace,

@@ -67,4 +67,4 @@ function createChronoTrigger(): ChronoTrigger {
 }
 
 // Exporting the library
-export const CT = createChronoTrigger();
+export const Crono = createChronoTrigger();

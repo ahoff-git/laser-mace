@@ -1,18 +1,18 @@
 // --- Example Usage in a Game Project ---
-import { CT } from '../dist/';
+import { Crono } from '../dist/';
 
-CT.setLoop(() => {
+Crono.setLoop(() => {
     let playerX = 0;
     let frameCount = 0;
 
     // Runs 60 times per second
-    CT.runAt(60, () => {
+    Crono.runAt(60, () => {
         playerX += 1;
         console.log(`Player X position: ${playerX}`);
     });
 
     // Runs 30 times per second
-    CT.runAt(30, () => {
+    Crono.runAt(30, () => {
         frameCount++;
         console.log(`Frame count: ${frameCount}`);
     });
@@ -21,7 +21,7 @@ CT.setLoop(() => {
     console.log('Running game logic at max speed');
 
     // Log the current FPS
-    console.log(`Current FPS: ${CT.CurrentFPS()}`);
+    console.log(`Current FPS: ${Crono.CurrentFPS()}`);
 });
 
-CT.Start();
+Crono.Start();

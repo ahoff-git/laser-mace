@@ -1,0 +1,17 @@
+{
+    "name": "send-request-demo",
+    "version": "1.0.0",
+    "description": "A simple website to test sendRequest function",
+    "scripts": {
+        "start": "http-server . -c-1",
+        "build": "tsc script.ts",
+        "watch": "tsc script.ts --watch",
+        "dev": "concurrently \"npm:watch\" \"npm:start\""
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2",
+        "http-server": "^14.1.1",
+        "laser-mace": "github:ahoff-git/laser-mace",
+        "typescript": "^5.7.2"
+    }
+}

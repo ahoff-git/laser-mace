@@ -1,4 +1,4 @@
-import { sendRequest } from laser-mace/dist
+import { sendRequest } from "laser-mace/dist/index.js";
 
 /* You'll need to run the following: 
     npm run dev

@@ -6,7 +6,8 @@
         "start": "http-server . -c-1",
         "build": "tsc script.ts",
         "watch": "tsc script.ts --watch",
-        "dev": "concurrently \"npm:watch\" \"npm:start\""
+        "dev": "concurrently \"npm:watch\" \"npm:start\"",
+        "version": "cat node_modules/laser-mace/package.json | grep version"
     },
     "devDependencies": {
         "concurrently": "^8.2.2",

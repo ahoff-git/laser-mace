@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --dts --format cjs,esm",
+    "watch": "tsup src/index.ts --dts --format cjs,esm --watch",
     "npm-bump-version-patch": "npm version patch",
     "npm-bump-version-minor": "npm version minor",
     "npm-bump-version-major": "npm version major"

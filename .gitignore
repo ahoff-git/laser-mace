@@ -1,4 +1,4 @@
 /node_modules
 examples/*.js
 examples/httpRequestsEx/node_modules/
-examples/httpRequestsEx/dist/
+examples/httpRequestsEx/script.js

@@ -204,4 +204,21 @@ declare const Crono: ChronoTrigger;
  */
 declare function getKeyNameByValue(obj: Record<string, unknown>, value: unknown): string;
 
-export { Crono, blockKeywords, createLazyState, currentLogLevel, filterKeywords, getKeyNameByValue, greetLaserMace, log, logLevels, rng, storage };
+/**
+ * Sends a POST request to a specified URL with the given payload.
+ *
+ * @template T - The expected response type.
+ * @param {string} url - The endpoint to which the request is sent.
+ * @param {Record<string, unknown>} payload - The data to be sent in the request body.
+ * @returns {Promise<T | undefined>} A promise resolving to the response of the request, or `undefined` if an error occurs.
+ *
+ * @example
+ * // Example usage:
+ * const response = await sendRequest<MyResponseType>("https://api.example.com/data", { key: "value" });
+ * if (response) {
+ *     console.log("Success:", response);
+ * }
+ */
+declare function sendRequest<T>(url: string, payload: Record<string, unknown>): Promise<T | undefined>;
+
+export { Crono, blockKeywords, createLazyState, currentLogLevel, filterKeywords, getKeyNameByValue, greetLaserMace, log, logLevels, rng, sendRequest, storage };

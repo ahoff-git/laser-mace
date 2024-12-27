@@ -5,3 +5,4 @@ export * from './test';
 export * from './lazyState';
 export * from './chronoTrigger';
 export * from './utils';
+export * from './httpRequests';

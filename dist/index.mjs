@@ -229,6 +229,33 @@ var Crono = createChronoTrigger();
 function getKeyNameByValue(obj, value) {
   return Object.entries(obj).find(([, v]) => v === value)?.[0] || "unknown";
 }
+
+// src/httpRequests.ts
+async function sendRequest(url, payload) {
+  log(logLevels.debug, "Initiating request", ["network", "sendRequest"], { url, payload });
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5e3);
+    log(logLevels.debug, "Sending payload to URL", ["network", "sendRequest"], { url });
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (!response.ok) {
+      log(logLevels.error, "Request failed", ["network", "sendRequest"], { status: response.status });
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+    const result = await response.json();
+    log(logLevels.debug, "Request succeeded", ["network", "debug", "sendRequest"], { result });
+    return result;
+  } catch (error) {
+    log(logLevels.error, "Error during request", ["network", "error", "sendRequest"], error);
+    return void 0;
+  }
+}
 export {
   Crono,
   blockKeywords,
@@ -240,5 +267,6 @@ export {
   log,
   logLevels,
   rng,
+  sendRequest,
   storage
 };

@@ -13,15 +13,15 @@
     <h1>Send Request Demo</h1>
     <form id="requestForm">
         <label for="url">API URL:</label>
-        <input type="text" id="url" placeholder="https://solid-operator.vercel.app/api/randomName" required style="width: 100%; margin-bottom: 10px;">
+        <input type="text" id="url" placeholder="https://solid-operator.vercel.app/api/randomName" value="https://solid-operator.vercel.app/api/randomName" required style="width: 100%; margin-bottom: 10px;">
         <label for="payload">Payload (JSON):</label>
-        <textarea id="payload" placeholder='{"key": "value"}' style="width: 100%; height: 100px; margin-bottom: 10px;"></textarea>
-        <button type="submit">Send Request</button>
+        <textarea id="payload" placeholder='{"key": "value"}' style="width: 100%; height: 100px; margin-bottom: 10px;">{}</textarea>
+        <button type="submit" id="submitBtn">Send Request</button>
     </form>
     <h2>Response</h2>
     <div id="response">Waiting for response...</div>
 
-    <script src="./script.js"></script>
+    <script type="module" src="./dist/script.js"></script>
 
 </body>
 </html>

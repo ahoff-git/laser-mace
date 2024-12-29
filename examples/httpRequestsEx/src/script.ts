@@ -1,5 +1,4 @@
-import { sendRequest } from "laser-mace/dist/index.js";
-
+import { sendRequest } from "laser-mace"
 /* You'll need to run the following: 
     npm run dev
 
@@ -7,12 +6,13 @@ import { sendRequest } from "laser-mace/dist/index.js";
 
 
 // Get form and elements
-const form = document.getElementById("requestForm") as HTMLFormElement;
+const form = document.getElementById("requestForm") as HTMLFormElement; 
 const urlInput = document.getElementById("url") as HTMLInputElement;
 const payloadInput = document.getElementById("payload") as HTMLTextAreaElement;
 const responseDiv = document.getElementById("response") as HTMLDivElement;
 
 form.addEventListener("submit", async (event) => {
+    console.log("stuff2");
     event.preventDefault();
 
     const url = urlInput.value;

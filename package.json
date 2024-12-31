@@ -23,6 +23,7 @@
   "author": "Ka1n0s",
   "license": "MIT",
   "devDependencies": {
+    "peerjs": "^1.5.4",
     "tsup": "^7.2.0",
     "typescript": "^5.7.2"
   }

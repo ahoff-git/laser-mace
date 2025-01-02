@@ -12,7 +12,6 @@ const payloadInput = document.getElementById("payload") as HTMLTextAreaElement;
 const responseDiv = document.getElementById("response") as HTMLDivElement;
 
 form.addEventListener("submit", async (event) => {
-    console.log("stuff2");
     event.preventDefault();
 
     const url = urlInput.value;

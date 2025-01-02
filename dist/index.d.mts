@@ -1,3 +1,5 @@
+import { DataConnection } from 'peerjs';
+
 /**
  * A utility module for interacting with browser localStorage with added logging support.
  *
@@ -64,7 +66,7 @@ declare const logLevels: {
  * to dynamically control which logs are displayed.
  *
  * @example
- * currentLogLevel = logLevels.warning; // Show only warnings and errors
+ * currentLogLevel.value = logLevels.warning; // Show only warnings and errors
  */
 declare const currentLogLevel: {
     value: number;
@@ -83,8 +85,10 @@ declare const blockKeywords: string[];
  * - Automatically uses `console.error`, `console.warn`, or `console.log` depending on the log level.
  * - Only logs messages if the specified `level` is less than or equal to the current `currentLogLevel`.
  * - Filters messages based on `filterKeywords` and `blockKeywords`.
+ * - Automatically includes timestamps for better traceability.
+ * - Makes a deep copy of the data before logging to prevent mutations.
  *
- * @param {number} level - The log level for the message (e.g., `logLevels.debug` or `logLevels.error`).
+ * @param {number} [level=logLevels.debug] - The log level for the message (e.g., `logLevels.debug` or `logLevels.error`).
  * @param {string} message - The message to log.
  * @param {string[]} [keywords=[]] - Keywords associated with the message for filtering (optional).
  * @param {...unknown[]} data - Additional data to log (optional).
@@ -97,7 +101,7 @@ declare const blockKeywords: string[];
  * // Example 2: Log an error message
  * log(logLevels.error, "Something went wrong", ["critical"], new Error("Oops!"));
  */
-declare function log(level: number, message: string, keywords?: string[], ...data: unknown[]): void;
+declare function log(level: number | undefined, message: string, keywords?: string[], ...data: unknown[]): void;
 
 /**
  * Generates a random number within the specified range, supporting precision.
@@ -123,6 +127,28 @@ declare function log(level: number, message: string, keywords?: string[], ...dat
  * rng(0.001, 0.1); // Could return 0.023 (3 decimal places derived)
  */
 declare function rng(low: number, high: number, decimals?: number | null): number;
+/**
+ * Selects a random item from an array of a specific type.
+ *
+ * Utilizes the `rng` function to generate a random index within the bounds of the array.
+ *
+ * @template T - The type of elements in the array.
+ * @param {T[]} collection - The array to select a random item from.
+ * @returns {T} - A randomly selected item from the array.
+ *
+ * @throws {Error} Throws an error if the collection is empty.
+ *
+ * @example
+ * // Example 1: Random item from a number array
+ * const numbers = [1, 2, 3, 4, 5];
+ * const randomNum = randomItem(numbers); // TypeScript infers: number
+ *
+ * @example
+ * // Example 2: Random item from a string array
+ * const fruits = ["apple", "banana", "cherry"];
+ * const randomFruit = randomItem(fruits); // TypeScript infers: string
+ */
+declare function randomItem<T>(collection: T[]): T;
 
 /**
  * Returns a fun greeting message from LaserMace.
@@ -203,6 +229,53 @@ declare const Crono: ChronoTrigger;
  * @returns {string} The key name if found, or "unknown" if not found.
  */
 declare function getKeyNameByValue(obj: Record<string, unknown>, value: unknown): string;
+/**
+ * Expose a local variable to the global scope by magically extracting its name.
+ * @param variableObj - An object containing the variable (e.g., { myVariable }).
+ */
+declare function expose<T>(variableObj: {
+    [key: string]: T;
+}): void;
+/**
+ * Safely retrieves the value of an HTML input element by its ID.
+ * If the element is not found or is not an input element, logs a message and returns a default value.
+ *
+ * @param {string} id - The ID of the HTML element to retrieve.
+ * @param {string | null} defaultValue - The default value to return if the element is not found or has no value.
+ * @returns {string | null} The value of the input element if found, or the default value if not.
+ *
+ * @example
+ * // Assuming <input id="username" value="JohnDoe" />
+ * const username = getSafeValueById('username', 'DefaultUser'); // Returns "JohnDoe"
+ *
+ * // Assuming no element exists with ID "nonExistent"
+ * const nonExistent = getSafeValueById('nonExistent', 'DefaultValue'); // Logs and returns "DefaultValue"
+ */
+declare function getSafeValueById(id: string, defaultValue?: string | null): string | null;
+/**
+ * Safely attaches a function to the `onclick` event of a DOM element by its ID.
+ * If the element is not found, it logs an error message.
+ * The provided function will be called with the specified parameters,
+ * and an optional callback can handle the return value and additional parameters.
+ *
+ * @param {string} id - The ID of the HTML element to attach the event to.
+ * @param {Function} fn - The function to execute on click.
+ * @param {Array<any>} params - The parameters to pass to the function when invoked.
+ * @param {Function} [callback] - Optional callback that receives the return value of `fn` and additional parameters.
+ * @param {...any[]} callbackParams - Additional parameters to pass to the callback.
+ *
+ * @example
+ * // Assuming <button id="submitButton">Submit</button>
+ * attachOnClick(
+ *   'submitButton',
+ *   (name) => `Hello, ${name}`,
+ *   ['John'],
+ *   (result, extraParam) => console.log(result, extraParam),
+ *   'Callback executed!'
+ * );
+ * // Clicking the button logs: "Hello, John" "Callback executed!"
+ */
+declare function attachOnClick(id: string, fn: (...args: any[]) => any, params: any[], callback?: (result: any, ...callbackParams: any[]) => void, ...callbackParams: any[]): void;
 
 /**
  * Sends a POST request to a specified URL with the given payload.
@@ -221,4 +294,64 @@ declare function getKeyNameByValue(obj: Record<string, unknown>, value: unknown)
  */
 declare function sendRequest<T>(url: string, payload: Record<string, unknown> | undefined): Promise<T | undefined>;
 
-export { Crono, blockKeywords, createLazyState, currentLogLevel, filterKeywords, getKeyNameByValue, greetLaserMace, log, logLevels, rng, sendRequest, storage };
+type HandlerFunction = (...args: any[]) => void;
+interface HandlerObject {
+    durable: boolean;
+    func: HandlerFunction;
+    args: any[];
+}
+interface Handlers {
+    OnMsg: HandlerObject[];
+    OnConnect: HandlerObject[];
+    OnDisconnect: HandlerObject[];
+    OnConnectionUpdate: HandlerObject[];
+    OnCheckIn: HandlerObject[];
+    OnStatusChange: HandlerObject[];
+    OnPeerConnectionStringSet: HandlerObject[];
+    OnLeaderChange: HandlerObject[];
+    OnMyLeaderStatusChange: HandlerObject[];
+}
+type PeerNetStatusObj = {
+    Phase: number;
+    Text: string;
+};
+type PeerNetObjType = {
+    SetRoom: (roomName: string) => void;
+    SetHandler: (handlerName: keyof Handlers, functionToCall: HandlerFunction, ...args: any[]) => void;
+    GetPeerId: () => string | null;
+    _SendMsgToOperator: (msg: any) => void;
+    ForceCheckin: () => void;
+    SetHandleMessage: (func: (senderConn: DataConnectionPlus, msg: MsgType) => void) => void;
+    GetActivePeers: () => Map<string, DataConnectionPlus>;
+    GetPeers: () => Map<string, DataConnectionPlus>;
+    SetOperatorURL: (url: string) => void;
+    ResetName: (newName: string) => void;
+    Send: (targetConn: DataConnectionPlus, msg: MsgType) => void;
+    Disconnect: (roomName: string) => void;
+    Connect: (roomName: string, playerName: string) => void;
+    GetDisplayName: () => string;
+    IsLeader: () => boolean;
+    GetOrderNumber: () => number | undefined;
+};
+type DataConnectionPlus = {
+    ConnId: string;
+    IsLeader: boolean | null;
+    DisplayName: string | null;
+    PeerConnectionString: string | null;
+    LastMsgDT: number | null;
+    PeerConnection: DataConnection | null;
+    Active: boolean;
+    Room: string | null;
+    Status: PeerConnectionStatus;
+    OrderNumber: number | undefined;
+};
+type PeerConnectionStatus = "Awaiting-Introduction" | "Unknown" | "Disconnected" | "Introduced" | undefined;
+type MsgType = {
+    Type: string;
+    Data?: any;
+};
+declare function PeerNetObj(operatorURL: string): PeerNetObjType;
+
+declare function getRandomName(separator?: string): string;
+
+export { Crono, DataConnectionPlus, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, attachOnClick, blockKeywords, createLazyState, currentLogLevel, expose, filterKeywords, getKeyNameByValue, getRandomName, getSafeValueById, greetLaserMace, log, logLevels, randomItem, rng, sendRequest, storage };

@@ -1,3 +1,5 @@
+import { log, logLevels } from "./logging";
+
 /**
  * Generates a random number within the specified range, supporting precision.
  * 
@@ -32,4 +34,32 @@ export function rng(low: number, high: number, decimals: number | null = null): 
     return decimals !== null
         ? parseFloat(randomValue.toFixed(decimals))
         : parseFloat(randomValue.toFixed(derivedDecimals));
+}
+
+/**
+ * Selects a random item from an array of a specific type.
+ *
+ * Utilizes the `rng` function to generate a random index within the bounds of the array.
+ *
+ * @template T - The type of elements in the array.
+ * @param {T[]} collection - The array to select a random item from.
+ * @returns {T} - A randomly selected item from the array.
+ *
+ * @throws {Error} Throws an error if the collection is empty.
+ *
+ * @example
+ * // Example 1: Random item from a number array
+ * const numbers = [1, 2, 3, 4, 5];
+ * const randomNum = randomItem(numbers); // TypeScript infers: number
+ *
+ * @example
+ * // Example 2: Random item from a string array
+ * const fruits = ["apple", "banana", "cherry"];
+ * const randomFruit = randomItem(fruits); // TypeScript infers: string
+ */
+export function randomItem<T>(collection: T[]): T {
+    if (collection.length === 0) {
+        log(logLevels.error, "Cannot select a random item from an empty array.", ['randomItem'], collection);
+    }
+    return collection[Math.floor(rng(0, collection.length-1))];
 }

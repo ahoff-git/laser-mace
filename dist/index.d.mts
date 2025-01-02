@@ -219,6 +219,6 @@ declare function getKeyNameByValue(obj: Record<string, unknown>, value: unknown)
  *     console.log("Success:", response);
  * }
  */
-declare function sendRequest<T>(url: string, payload: Record<string, unknown>): Promise<T | undefined>;
+declare function sendRequest<T>(url: string, payload: Record<string, unknown> | undefined): Promise<T | undefined>;
 
 export { Crono, blockKeywords, createLazyState, currentLogLevel, filterKeywords, getKeyNameByValue, greetLaserMace, log, logLevels, rng, sendRequest, storage };

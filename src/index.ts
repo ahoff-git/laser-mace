@@ -8,3 +8,5 @@ export * from './utils';
 export * from './httpRequests';
 export * from './opCon';
 export * from './rndName';
+export * from './canvasBuddy';
+export * from './customSort';

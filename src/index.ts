@@ -10,3 +10,8 @@ export * from './opCon';
 export * from './rndName';
 export * from './canvasBuddy';
 export * from './customSort';
+export * from './commonTypes';
+export * from './interpolateLoc';
+export * from './pointMath';
+export * from './vector';
+export * from './math';

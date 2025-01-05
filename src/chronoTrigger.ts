@@ -1,5 +1,6 @@
 // ChronoTrigger Library (CT) using Factory Functions with FPS Tracking
 import { log, logLevels } from './logging';
+import { createRollingAverage } from './math';
 
 interface ChronoTrigger {
     Start: () => void;
@@ -7,6 +8,7 @@ interface ChronoTrigger {
     setLoop: (loopFunction: (time: number) => void) => void;
     runAt: (fps: number, callback: () => void) => void;
     CurrentFPS: () => number;
+    AverageFPS: () => number;
 }
 
 function createChronoTrigger(): ChronoTrigger {
@@ -14,6 +16,7 @@ function createChronoTrigger(): ChronoTrigger {
     let loop: ((time: number) => void) | null = null;
     let running = false;
     let fps = 0; // Tracks the current running FPS
+    const fpsHist = createRollingAverage(400);
     let lastFrameTime = 0;
 
     const Start = (): void => {
@@ -25,7 +28,9 @@ function createChronoTrigger(): ChronoTrigger {
             if (running) {
                 if (lastFrameTime > 0) {
                     const delta = time - lastFrameTime;
-                    fps = Math.round(1000 / delta);
+                    // using Math.max to avoid divide by 0
+                    fps = Math.round(1000 / Math.max(delta,1));
+                    fpsHist.add(fps);
                 }
                 lastFrameTime = time;
 
@@ -62,8 +67,9 @@ function createChronoTrigger(): ChronoTrigger {
     };
 
     const CurrentFPS = (): number => fps;
+    const AverageFPS = (): number => Math.round(fpsHist.getAverage());
 
-    return { Start, Stop, setLoop, runAt, CurrentFPS };
+    return { Start, Stop, setLoop, runAt, CurrentFPS, AverageFPS};
 }
 
 // Exporting the library

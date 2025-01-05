@@ -1,4 +1,4 @@
-type DrawOptions = {
+export type DrawOptions = {
   color?: string; // Fill or stroke color
   transparency?: number; // Transparency from 0 to 1
   rotationAngle?: number; // Angle in degrees
@@ -10,14 +10,63 @@ type DrawOptions = {
   offsetX?: number; // Offset on the x-axis
   offsetY?: number; // Offset on the y-axis
   showAnchor?: boolean; // Show anchor point on canvas
+  returnDetails?: boolean; // set to return the bounding box numbers 
 };
 
-export function CanvasBuddy(canvas: HTMLCanvasElement) {
+export type ShapeDetails = {
+  center: { x: number; y: number };
+  min: { x: number; y: number };
+  max: { x: number; y: number };
+  anchor: { x: number; y: number };
+  topLeft: { x: number; y: number };
+  topRight: { x: number; y: number };
+  bottomLeft: { x: number; y: number };
+  bottomRight: { x: number; y: number };
+  topCenter: { x: number; y: number };
+  bottomCenter: { x: number; y: number };
+  leftCenter: { x: number; y: number };
+  rightCenter: { x: number; y: number };
+  dimensions: { width: number; height: number };
+};
+
+export type CanvasBuddy = {
+  drawCircle: (x: number, y: number, radius: number, options?: DrawOptions) => ShapeDetails | undefined;
+  drawSquare: (x: number, y: number, width: number, options?: DrawOptions) => ShapeDetails | undefined;
+  drawText: (text: string, x: number, y: number, options?: DrawOptions) => ShapeDetails | undefined;
+  drawImage: (image: HTMLImageElement, x: number, y: number, width: number, height: number, options?: DrawOptions) => ShapeDetails | undefined;
+  markBoundingBoxLocations: (boundingBox: ShapeDetails, excludeKeys?: Array<ShapeDetails>) => void;
+  eraseArea: (x: number, y: number, width: number, height: number) => void;
+  clearCanvas: () => void;
+  clearBoundingBox: (boundingBox: ShapeDetails) => void;
+  getCanvasDetails: () => {
+    width: number; height: number; location: { top: number; left: number; right: number; bottom: number; };
+  }
+}
+
+
+export function createCanvasBuddy(canvas: HTMLCanvasElement): CanvasBuddy {
   const ctx = canvas.getContext("2d")!;
 
   if (!ctx) {
     throw new Error("Failed to get 2D context");
   }
+
+  function getCanvasDetails() {
+    const { width, height } = canvas; // Canvas width and height
+    const rect = canvas.getBoundingClientRect(); // Canvas location on the page
+
+    return {
+      width, // Canvas width in pixels
+      height, // Canvas height in pixels
+      location: {
+        top: rect.top, // Distance from the top of the viewport
+        left: rect.left, // Distance from the left of the viewport
+        right: rect.right, // Distance from the left + width
+        bottom: rect.bottom, // Distance from the top + height
+      },
+    };
+  }
+
 
   function applyOptions(options: DrawOptions = {}) {
     // Reset to default values
@@ -125,8 +174,8 @@ export function CanvasBuddy(canvas: HTMLCanvasElement) {
 
   // Utility to display the bounding box locations
   function markBoundingBoxLocations(
-    boundingBox: ReturnType<typeof calculateBoundingBox>,
-    excludeKeys: Array<keyof ReturnType<typeof calculateBoundingBox>> = []
+    boundingBox: ShapeDetails,
+    excludeKeys: Array<ShapeDetails> = []
   ) {
     const locations = [
       { key: "center", point: boundingBox.center },
@@ -166,8 +215,8 @@ export function CanvasBuddy(canvas: HTMLCanvasElement) {
       const textAlign = capKey.includes("LEFT")
         ? "right"
         : capKey.includes("RIGHT")
-        ? "left"
-        : "center";
+          ? "left"
+          : "center";
       const verticalAlign = capKey.includes("BOTTOM") ? "bottom" : "top";
 
       // Default offset
@@ -182,7 +231,7 @@ export function CanvasBuddy(canvas: HTMLCanvasElement) {
       placedLabels.forEach((label) => {
         const distance = Math.sqrt(
           Math.pow(label.x - (point.x + textOffsetX), 2) +
-            Math.pow(label.y - (point.y + textOffsetY), 2)
+          Math.pow(label.y - (point.y + textOffsetY), 2)
         );
         if (distance * 2 < Math.max(label.textWidth, textWidth)) {
           // Dynamically shift away from the center point
@@ -191,15 +240,15 @@ export function CanvasBuddy(canvas: HTMLCanvasElement) {
           const dy = point.y - centerPoint.y;
           let isLeft = 0;
           let isBelow = 0;
-          if (dx != 0){
-              isLeft = dx > 0 ? 1 : -1
-          }                    
-          if (dy != 0){
-              isBelow = dy > 0 ? 1 : -1
+          if (dx != 0) {
+            isLeft = dx > 0 ? 1 : -1
+          }
+          if (dy != 0) {
+            isBelow = dy > 0 ? 1 : -1
           }
           const stepSize = fontSize + dotSize / 2;
           textOffsetX += isLeft * stepSize;
-          textOffsetY += isBelow * stepSize;        
+          textOffsetY += isBelow * stepSize;
         }
       });
 
@@ -230,6 +279,8 @@ export function CanvasBuddy(canvas: HTMLCanvasElement) {
     options: DrawOptions = {},
     isCircle: boolean = false
   ) {
+    //by default we skip this whole function, but if you want the box, you can set the 'returnDetails' option
+    if (!options.returnDetails) { return }
     const {
       rotationAngle = 0,
       rotationOrigin = "center",
@@ -344,7 +395,7 @@ export function CanvasBuddy(canvas: HTMLCanvasElement) {
     y: number,
     radius: number,
     options: DrawOptions = {}
-  ) {
+  ): ShapeDetails | undefined {
     applyOptions(options);
 
     const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(
@@ -387,7 +438,7 @@ export function CanvasBuddy(canvas: HTMLCanvasElement) {
     y: number,
     width: number,
     options: DrawOptions = {}
-  ) {
+  ): ShapeDetails | undefined {
     applyOptions(options);
 
     const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(
@@ -416,7 +467,7 @@ export function CanvasBuddy(canvas: HTMLCanvasElement) {
     width: number,
     height: number,
     options: DrawOptions = {}
-  ) {
+  ): ShapeDetails | undefined {
     const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(
       x,
       y,
@@ -444,7 +495,7 @@ export function CanvasBuddy(canvas: HTMLCanvasElement) {
     x: number,
     y: number,
     options: DrawOptions = {}
-  ) {
+  ): ShapeDetails | undefined {
     applyOptions(options);
 
     const textWidth = ctx.measureText(text).width;
@@ -463,8 +514,8 @@ export function CanvasBuddy(canvas: HTMLCanvasElement) {
       options.verticalAlign === "middle"
         ? height / 2
         : options.verticalAlign === "bottom"
-        ? height
-        : 0;
+          ? height
+          : 0;
 
     ctx.fillText(text, adjustedX, adjustedY + verticalOffset);
 
@@ -480,11 +531,28 @@ export function CanvasBuddy(canvas: HTMLCanvasElement) {
       options
     );
   }
+  function eraseArea(x: number, y: number, width: number, height: number) {
+    ctx.clearRect(x, y, width, height);
+  }
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function clearBoundingBox(boundingBox: ShapeDetails) {
+    const { min, dimensions } = boundingBox;
+    ctx.clearRect(min.x, min.y, dimensions.width, dimensions.height);
+  }
+
   return {
     drawCircle,
     drawSquare,
     drawText,
     drawImage,
     markBoundingBoxLocations,
+    eraseArea,
+    clearCanvas,
+    clearBoundingBox,
+    getCanvasDetails
   };
 }

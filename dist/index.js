@@ -649,12 +649,20 @@ __export(src_exports, {
   PeerNetObj: () => PeerNetObj,
   attachOnClick: () => attachOnClick,
   blockKeywords: () => blockKeywords,
+  colorFrmRange: () => colorFrmRange,
+  createCanvasBuddy: () => createCanvasBuddy,
   createLazyState: () => createLazyState,
+  createRollingAverage: () => createRollingAverage,
   currentLogLevel: () => currentLogLevel,
+  customSort: () => customSort,
+  dist: () => dist,
   expose: () => expose,
   filterKeywords: () => filterKeywords,
+  getColorPair: () => getColorPair,
   getKeyNameByValue: () => getKeyNameByValue,
+  getPositionAtCompletion: () => getPositionAtCompletion,
   getRandomName: () => getRandomName,
+  getRndColor: () => getRndColor,
   getSafeValueById: () => getSafeValueById,
   greetLaserMace: () => greetLaserMace,
   log: () => log,
@@ -662,7 +670,9 @@ __export(src_exports, {
   randomItem: () => randomItem,
   rng: () => rng,
   sendRequest: () => sendRequest,
-  storage: () => storage
+  setupVector: () => setupVector,
+  storage: () => storage,
+  sumOfDistances: () => sumOfDistances
 });
 module.exports = __toCommonJS(src_exports);
 
@@ -779,6 +789,50 @@ function randomItem(collection) {
   }
   return collection[Math.floor(rng(0, collection.length - 1))];
 }
+function getRndColor() {
+  const red = Math.round(Math.random() * 234 + 10);
+  const green = Math.round(Math.random() * 234 + 20);
+  const blue = Math.round(Math.random() * 234 + 20);
+  const color = "#" + red.toString(16) + green.toString(16) + blue.toString(16);
+  return color;
+}
+function getColorPair() {
+  const red = Math.round(Math.random() * 234 + 10);
+  const antiRed = Math.abs(red - 234) + 20;
+  const green = Math.round(Math.random() * 234 + 20);
+  const antiGreen = Math.abs(green - 234) + 20;
+  const blue = Math.round(Math.random() * 234 + 20);
+  const antiblue = Math.abs(blue - 234) + 20;
+  const color = "#" + red.toString(16) + green.toString(16) + blue.toString(16);
+  const antiColor = "#" + antiRed.toString(16) + antiGreen.toString(16) + antiblue.toString(16);
+  return { c1: color, c2: antiColor };
+}
+function colorFrmRange(c1, c2, percent) {
+  percent = percent / 100;
+  const c1R = parseInt(c1.slice(1, 3), 16);
+  const c1G = parseInt(c1.slice(3, 5), 16);
+  const c1B = parseInt(c1.slice(5, 7), 16);
+  const c2R = parseInt(c2.slice(1, 3), 16);
+  const c2G = parseInt(c2.slice(3, 5), 16);
+  const c2B = parseInt(c2.slice(5, 7), 16);
+  const rDif = c1R - c2R;
+  const gDif = c1G - c2G;
+  const bDif = c1B - c2B;
+  let red = Math.round(c1R - percent * rDif).toString(16);
+  let green = Math.round(c1G - percent * gDif).toString(16);
+  let blue = Math.round(c1B - percent * bDif).toString(16);
+  if (red.length < 2) {
+    red = "0" + red;
+  }
+  if (green.length < 2) {
+    green = "0" + green;
+  }
+  if (blue.length < 2) {
+    blue = "0" + blue;
+  }
+  const color = "#" + red + green + blue;
+  return color;
+}
 
 // src/test.ts
 var greetLaserMace = () => {
@@ -863,12 +917,48 @@ function createLazyState(definitions) {
   return proxy;
 }
 
+// src/math.ts
+function createRollingAverage(rollingWindowSize, maxDeltaPercent = 10) {
+  if (rollingWindowSize <= 0) {
+    throw new Error("Rolling window size must be greater than 0.");
+  }
+  let values = [];
+  let sum = 0;
+  let weightedSum = 0;
+  let weight = 0;
+  return {
+    add(value) {
+      const currentAverage = values.length > 0 ? sum / values.length : 0;
+      const maxDelta = currentAverage * (1 + maxDeltaPercent / 100);
+      const adjustedValue = currentAverage > 0 && value > maxDelta ? maxDelta : value;
+      values.push(adjustedValue);
+      sum += adjustedValue;
+      const currentWeight = Math.min(values.length, rollingWindowSize);
+      weightedSum += adjustedValue * currentWeight;
+      weight += currentWeight;
+      if (values.length > rollingWindowSize) {
+        const removedValue = values.shift();
+        sum -= removedValue;
+        weightedSum -= removedValue * rollingWindowSize;
+        weight -= rollingWindowSize;
+      }
+    },
+    getAverage() {
+      if (values.length < rollingWindowSize) {
+        return weight === 0 ? 0 : weightedSum / weight;
+      }
+      return values.length === 0 ? 0 : sum / values.length;
+    }
+  };
+}
+
 // src/chronoTrigger.ts
 function createChronoTrigger() {
   const lastRunTimes = /* @__PURE__ */ new Map();
   let loop = null;
   let running = false;
   let fps = 0;
+  const fpsHist = createRollingAverage(400);
   let lastFrameTime = 0;
   const Start = () => {
     if (typeof loop !== "function") {
@@ -879,7 +969,8 @@ function createChronoTrigger() {
       if (running) {
         if (lastFrameTime > 0) {
           const delta = time - lastFrameTime;
-          fps = Math.round(1e3 / delta);
+          fps = Math.round(1e3 / Math.max(delta, 1));
+          fpsHist.add(fps);
         }
         lastFrameTime = time;
         loop(time);
@@ -909,7 +1000,8 @@ function createChronoTrigger() {
     }
   };
   const CurrentFPS = () => fps;
-  return { Start, Stop, setLoop, runAt, CurrentFPS };
+  const AverageFPS = () => Math.round(fpsHist.getAverage());
+  return { Start, Stop, setLoop, runAt, CurrentFPS, AverageFPS };
 }
 var Crono = createChronoTrigger();
 
@@ -6115,18 +6207,648 @@ function setCooldown(option, wordType) {
   };
   wordCooldowns.push(cooldown);
 }
+
+// src/canvasBuddy.ts
+function createCanvasBuddy(canvas) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Failed to get 2D context");
+  }
+  function getCanvasDetails() {
+    const { width, height } = canvas;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      width,
+      // Canvas width in pixels
+      height,
+      // Canvas height in pixels
+      location: {
+        top: rect.top,
+        // Distance from the top of the viewport
+        left: rect.left,
+        // Distance from the left of the viewport
+        right: rect.right,
+        // Distance from the left + width
+        bottom: rect.bottom
+        // Distance from the top + height
+      }
+    };
+  }
+  function applyOptions(options = {}) {
+    ctx.fillStyle = "#000";
+    ctx.globalAlpha = 1;
+    ctx.font = "16px sans-serif";
+    ctx.textAlign = "start";
+    if (options.color)
+      ctx.fillStyle = options.color;
+    if (options.transparency !== void 0) {
+      if (options.transparency < 0 || options.transparency > 1) {
+        console.error(
+          "Transparency must be between 0 and 1. Setting to default (1)."
+        );
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.globalAlpha = options.transparency;
+      }
+    }
+    if (options.fontSize) {
+      if (typeof options.fontSize !== "number" || options.fontSize <= 0) {
+        console.error(
+          "Font size must be a positive number. Setting to default (16px)."
+        );
+        ctx.font = "16px sans-serif";
+      } else {
+        ctx.font = `${options.fontSize}px sans-serif`;
+      }
+    }
+    if (options.textAlign)
+      ctx.textAlign = options.textAlign;
+  }
+  function handleRotation(x, y, width, height, options, callback) {
+    const { rotationAngle = 0, rotationOrigin = "center" } = options;
+    if (rotationAngle === 0) {
+      callback();
+      return;
+    }
+    const radians = rotationAngle * Math.PI / 180;
+    const centerX = rotationOrigin === "center" ? x + width / 2 : x;
+    const centerY = rotationOrigin === "center" ? y + height / 2 : y;
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(radians);
+    ctx.translate(-centerX, -centerY);
+    callback();
+    ctx.restore();
+  }
+  function drawAnchorPoint(x, y) {
+    ctx.save();
+    ctx.fillStyle = "limegreen";
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  function adjustForAnchorAndOffset(x, y, width, height, options) {
+    const { anchor = "top-left", offsetX = 0, offsetY = 0 } = options;
+    let adjustedPosition = { x, y };
+    switch (anchor) {
+      case "top-right":
+        adjustedPosition = { x: x - width, y };
+        break;
+      case "bottom-left":
+        adjustedPosition = { x, y: y - height };
+        break;
+      case "bottom-right":
+        adjustedPosition = { x: x - width, y: y - height };
+        break;
+      case "center":
+        adjustedPosition = { x: x - width / 2, y: y - height / 2 };
+        break;
+    }
+    return {
+      x: adjustedPosition.x + offsetX,
+      y: adjustedPosition.y + offsetY
+    };
+  }
+  function markBoundingBoxLocations(boundingBox, excludeKeys = []) {
+    const locations = [
+      { key: "center", point: boundingBox.center },
+      { key: "min", point: boundingBox.min },
+      { key: "max", point: boundingBox.max },
+      { key: "anchor", point: boundingBox.anchor },
+      { key: "topLeft", point: boundingBox.topLeft },
+      { key: "topRight", point: boundingBox.topRight },
+      { key: "bottomLeft", point: boundingBox.bottomLeft },
+      { key: "bottomRight", point: boundingBox.bottomRight },
+      { key: "topCenter", point: boundingBox.topCenter },
+      { key: "bottomCenter", point: boundingBox.bottomCenter },
+      { key: "leftCenter", point: boundingBox.leftCenter },
+      { key: "rightCenter", point: boundingBox.rightCenter }
+    ];
+    const placedLabels = [];
+    locations.forEach(({ key, point }) => {
+      if (excludeKeys.includes(key)) {
+        return;
+      }
+      const dotSize = 5;
+      drawCircle(point.x, point.y, dotSize, {
+        color: "red",
+        showAnchor: false
+      });
+      const capKey = key.toUpperCase();
+      const textAlign = capKey.includes("LEFT") ? "right" : capKey.includes("RIGHT") ? "left" : "center";
+      const verticalAlign = capKey.includes("BOTTOM") ? "bottom" : "top";
+      let textOffsetX = textAlign === "right" ? -dotSize : textAlign === "left" ? dotSize : 0;
+      let textOffsetY = verticalAlign === "bottom" ? dotSize : -dotSize;
+      const fontSize = 12;
+      const textWidth = ctx.measureText(key).width;
+      const textHeight = fontSize;
+      placedLabels.forEach((label) => {
+        const distance = Math.sqrt(
+          Math.pow(label.x - (point.x + textOffsetX), 2) + Math.pow(label.y - (point.y + textOffsetY), 2)
+        );
+        if (distance * 2 < Math.max(label.textWidth, textWidth)) {
+          const centerPoint = boundingBox.center;
+          const dx = point.x - centerPoint.x;
+          const dy = point.y - centerPoint.y;
+          let isLeft = 0;
+          let isBelow = 0;
+          if (dx != 0) {
+            isLeft = dx > 0 ? 1 : -1;
+          }
+          if (dy != 0) {
+            isBelow = dy > 0 ? 1 : -1;
+          }
+          const stepSize = fontSize + dotSize / 2;
+          textOffsetX += isLeft * stepSize;
+          textOffsetY += isBelow * stepSize;
+        }
+      });
+      placedLabels.push({
+        x: point.x + textOffsetX,
+        y: point.y + textOffsetY,
+        textWidth,
+        textHeight
+      });
+      drawText(key, point.x + textOffsetX, point.y + textOffsetY, {
+        color: "black",
+        fontSize,
+        textAlign,
+        verticalAlign
+      });
+    });
+  }
+  function calculateBoundingBox(x, y, width, height, options = {}, isCircle = false) {
+    if (!options.returnDetails) {
+      return;
+    }
+    const {
+      rotationAngle = 0,
+      rotationOrigin = "center",
+      anchor = "top-left"
+    } = options;
+    const radians = rotationAngle * Math.PI / 180;
+    const centerX = rotationOrigin === "center" ? x + width / 2 : x;
+    const centerY = rotationOrigin === "center" ? y + height / 2 : y;
+    let anchorX = x;
+    let anchorY = y;
+    switch (anchor) {
+      case "top-left":
+        break;
+      case "top-right":
+        anchorX += width;
+        break;
+      case "bottom-left":
+        anchorY += height;
+        break;
+      case "bottom-right":
+        anchorX += width;
+        anchorY += height;
+        break;
+      case "center":
+        anchorX += width / 2;
+        anchorY += height / 2;
+        break;
+    }
+    if (isCircle) {
+      const radius = width / 2;
+      return {
+        center: { x: centerX, y: centerY },
+        min: { x: centerX - radius, y: centerY - radius },
+        max: { x: centerX + radius, y: centerY + radius },
+        anchor: { x: anchorX, y: anchorY },
+        topLeft: { x: centerX - radius, y: centerY - radius },
+        topRight: { x: centerX + radius, y: centerY - radius },
+        bottomLeft: { x: centerX - radius, y: centerY + radius },
+        bottomRight: { x: centerX + radius, y: centerY + radius },
+        topCenter: { x: centerX, y: centerY - radius },
+        bottomCenter: { x: centerX, y: centerY + radius },
+        leftCenter: { x: centerX - radius, y: centerY },
+        rightCenter: { x: centerX + radius, y: centerY },
+        dimensions: {
+          width: radius * 2,
+          height: radius * 2
+        }
+      };
+    }
+    const corners = [
+      { x, y },
+      // Top-left
+      { x: x + width, y },
+      // Top-right
+      { x, y: y + height },
+      // Bottom-left
+      { x: x + width, y: y + height }
+      // Bottom-right
+    ];
+    const rotatedCorners = corners.map((corner) => {
+      const dx = corner.x - centerX;
+      const dy = corner.y - centerY;
+      return {
+        x: centerX + dx * Math.cos(radians) - dy * Math.sin(radians),
+        y: centerY + dx * Math.sin(radians) + dy * Math.cos(radians)
+      };
+    });
+    const xs = rotatedCorners.map((corner) => corner.x);
+    const ys = rotatedCorners.map((corner) => corner.y);
+    return {
+      center: { x: centerX, y: centerY },
+      min: { x: Math.min(...xs), y: Math.min(...ys) },
+      max: { x: Math.max(...xs), y: Math.max(...ys) },
+      anchor: { x: anchorX, y: anchorY },
+      topLeft: rotatedCorners[0],
+      topRight: rotatedCorners[1],
+      bottomLeft: rotatedCorners[2],
+      bottomRight: rotatedCorners[3],
+      topCenter: {
+        x: (rotatedCorners[0].x + rotatedCorners[1].x) / 2,
+        y: rotatedCorners[0].y
+      },
+      bottomCenter: {
+        x: (rotatedCorners[2].x + rotatedCorners[3].x) / 2,
+        y: rotatedCorners[2].y
+      },
+      leftCenter: {
+        x: rotatedCorners[0].x,
+        y: (rotatedCorners[0].y + rotatedCorners[2].y) / 2
+      },
+      rightCenter: {
+        x: rotatedCorners[1].x,
+        y: (rotatedCorners[1].y + rotatedCorners[3].y) / 2
+      },
+      dimensions: {
+        width: Math.abs(Math.max(...xs) - Math.min(...xs)),
+        height: Math.abs(Math.max(...ys) - Math.min(...ys))
+      }
+    };
+  }
+  function drawCircle(x, y, radius, options = {}) {
+    applyOptions(options);
+    const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(
+      x,
+      y,
+      radius * 2,
+      radius * 2,
+      options
+    );
+    handleRotation(
+      adjustedX - radius,
+      adjustedY - radius,
+      radius * 2,
+      radius * 2,
+      options,
+      () => {
+        ctx.beginPath();
+        ctx.arc(adjustedX, adjustedY, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    );
+    if (options.showAnchor) {
+      drawAnchorPoint(adjustedX, adjustedY);
+    }
+    return calculateBoundingBox(
+      adjustedX - radius,
+      adjustedY - radius,
+      radius * 2,
+      radius * 2,
+      options,
+      true
+    );
+  }
+  function drawSquare(x, y, width, options = {}) {
+    applyOptions(options);
+    const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(
+      x,
+      y,
+      width,
+      width,
+      options
+    );
+    handleRotation(adjustedX, adjustedY, width, width, options, () => {
+      ctx.fillRect(adjustedX, adjustedY, width, width);
+    });
+    if (options.showAnchor) {
+      drawAnchorPoint(adjustedX, adjustedY);
+    }
+    return calculateBoundingBox(adjustedX, adjustedY, width, width, options);
+  }
+  function drawImage(image, x, y, width, height, options = {}) {
+    const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(
+      x,
+      y,
+      width,
+      height,
+      options
+    );
+    handleRotation(adjustedX, adjustedY, width, height, options, () => {
+      ctx.save();
+      applyOptions(options);
+      ctx.drawImage(image, adjustedX, adjustedY, width, height);
+      ctx.restore();
+    });
+    if (options.showAnchor) {
+      drawAnchorPoint(adjustedX, adjustedY);
+    }
+    return calculateBoundingBox(adjustedX, adjustedY, width, height, options);
+  }
+  function drawText(text, x, y, options = {}) {
+    applyOptions(options);
+    const textWidth = ctx.measureText(text).width;
+    const fontSize = options.fontSize || 16;
+    const height = fontSize;
+    const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(
+      x,
+      y,
+      textWidth,
+      height,
+      options
+    );
+    const verticalOffset = options.verticalAlign === "middle" ? height / 2 : options.verticalAlign === "bottom" ? height : 0;
+    ctx.fillText(text, adjustedX, adjustedY + verticalOffset);
+    if (options.showAnchor) {
+      drawAnchorPoint(adjustedX, adjustedY);
+    }
+    return calculateBoundingBox(
+      adjustedX,
+      adjustedY,
+      textWidth,
+      height,
+      options
+    );
+  }
+  function eraseArea(x, y, width, height) {
+    ctx.clearRect(x, y, width, height);
+  }
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  function clearBoundingBox(boundingBox) {
+    const { min, dimensions } = boundingBox;
+    ctx.clearRect(min.x, min.y, dimensions.width, dimensions.height);
+  }
+  return {
+    drawCircle,
+    drawSquare,
+    drawText,
+    drawImage,
+    markBoundingBoxLocations,
+    eraseArea,
+    clearCanvas,
+    clearBoundingBox,
+    getCanvasDetails
+  };
+}
+
+// src/customSort.ts
+function customSort(collection, sortingDirection, sortProperty, ignoreSymbols = [], caseInsensitive = false) {
+  if (!Array.isArray(ignoreSymbols) || !ignoreSymbols.every((sym) => typeof sym === "string")) {
+    throw new Error("ignoreSymbols must be an array of strings");
+  }
+  const ignoreSet = new Set(ignoreSymbols);
+  const cleanValue = (value) => {
+    if (typeof value !== "string") {
+      throw new Error("Value to clean must be a string");
+    }
+    const result = [];
+    let tempNumber = "";
+    if (caseInsensitive) {
+      value = value.toUpperCase();
+    }
+    for (let char of value) {
+      if (ignoreSet.has(char)) {
+        continue;
+      }
+      if (char >= "0" && char <= "9") {
+        tempNumber += char;
+      } else {
+        if (tempNumber) {
+          result.push(parseInt(tempNumber, 10));
+          tempNumber = "";
+        }
+        result.push(char);
+      }
+    }
+    if (tempNumber) {
+      result.push(parseInt(tempNumber, 10));
+    }
+    return result;
+  };
+  const compareValues = (a, b) => {
+    const valueA = typeof a === "number" ? [a] : cleanValue(sortProperty ? String(a[sortProperty]) : String(a));
+    const valueB = typeof b === "number" ? [b] : cleanValue(sortProperty ? String(b[sortProperty]) : String(b));
+    const maxLength = Math.min(valueA.length, valueB.length);
+    for (let i = 0; i < maxLength; i++) {
+      const partA = valueA[i];
+      const partB = valueB[i];
+      if (partA < partB)
+        return sortingDirection === "asc" ? -1 : 1;
+      if (partA > partB)
+        return sortingDirection === "asc" ? 1 : -1;
+    }
+    if (valueA.length < valueB.length)
+      return sortingDirection === "asc" ? -1 : 1;
+    if (valueA.length > valueB.length)
+      return sortingDirection === "asc" ? 1 : -1;
+    return 0;
+  };
+  return [...collection].sort(compareValues);
+}
+
+// src/interpolateLoc.ts
+function calculateTangents(vects) {
+  let tangents = [];
+  for (let i = 0; i < vects.length; i++) {
+    if (i === 0) {
+      tangents.push({
+        x: vects[i + 1].x - vects[i].x,
+        y: vects[i + 1].y - vects[i].y
+      });
+    } else if (i === vects.length - 1) {
+      tangents.push({
+        x: vects[i - 1].x - vects[i].x,
+        y: vects[i - 1].y - vects[i].y
+      });
+    } else {
+      tangents.push({
+        x: (vects[i + 1].x - vects[i - 1].x) / 2,
+        y: (vects[i + 1].y - vects[i - 1].y) / 2
+      });
+    }
+    tangents[i].x *= vects[i].s;
+    tangents[i].y *= vects[i].s;
+  }
+  return tangents;
+}
+function hermiteInterpolate(p0, p1, t0, t1, t) {
+  const h00 = 2 * t ** 3 - 3 * t ** 2 + 1;
+  const h10 = t ** 3 - 2 * t ** 2 + t;
+  const h01 = -2 * t ** 3 + 3 * t ** 2;
+  const h11 = t ** 3 - t ** 2;
+  return {
+    x: h00 * p0.x + h10 * t0.x + h01 * p1.x + h11 * t1.x,
+    y: h00 * p0.y + h10 * t0.y + h01 * p1.y + h11 * t1.y
+  };
+}
+function getPositionAtCompletion(vects, completion) {
+  if (completion > 100) {
+    completion = 99.99;
+  }
+  const tangents = calculateTangents(vects);
+  let t = completion / 100;
+  let sectionIndex = 0;
+  for (let i = 1; i < vects.length; i++) {
+    if (t < vects[i].percentageComplete / 100) {
+      sectionIndex = i - 1;
+      break;
+    }
+  }
+  const sectionStart = vects[sectionIndex].percentageComplete / 100;
+  const sectionEnd = vects[sectionIndex + 1].percentageComplete / 100;
+  const localT = (t - sectionStart) / (sectionEnd - sectionStart);
+  return hermiteInterpolate(
+    vects[sectionIndex],
+    vects[sectionIndex + 1],
+    tangents[sectionIndex],
+    tangents[sectionIndex + 1],
+    localT
+  );
+}
+
+// src/pointMath.ts
+function dist(obj1, obj2) {
+  return Math.sqrt((obj2.x - obj1.x) * (obj2.x - obj1.x) + (obj2.y - obj1.y) * (obj2.y - obj1.y));
+}
+function sumOfDistances(points) {
+  let totalDistance = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    totalDistance += dist(points[i], points[i + 1]);
+  }
+  return totalDistance;
+}
+
+// src/vector.ts
+function getBaseVect(x = 0, y = 0, angle = 0, speed = 0, mass = 0) {
+  return { x, y, angle, speed, mass };
+}
+function vectSum(obj1, obj2) {
+  const r1 = obj1.speed * obj1.mass;
+  const r2 = obj2.speed * obj2.mass;
+  const ar = obj1.angle * Math.PI / 180;
+  const br = obj2.angle * Math.PI / 180;
+  const r1x = r1 * Math.cos(ar);
+  const r1y = r1 * Math.sin(ar);
+  const r2x = r2 * Math.cos(br);
+  const r2y = r2 * Math.sin(br);
+  const rrx = r1x + r2x;
+  const rry = r1y + r2y;
+  const r = Math.sqrt(rrx * rrx + rry * rry);
+  const angr = atan7(rrx, rry);
+  return { angle: angr, mag: r, speed: r / obj1.mass };
+}
+function vectSumAndSet(obj1, obj2) {
+  const temp = vectSum(obj1, obj2);
+  obj1.angle = temp.angle;
+  obj1.speed = temp.mag / obj1.mass;
+  return obj1;
+}
+function atan7(x, y) {
+  const xck = Math.abs(x);
+  const yck = Math.abs(y);
+  const sck = Math.pow(10, -6);
+  if (xck < sck) {
+    if (yck < sck)
+      return 0;
+    return y >= 0 ? 90 : 270;
+  }
+  if (x > 0) {
+    if (y >= 0)
+      return 180 * Math.atan(y / x) / Math.PI;
+    return 180 * Math.atan(y / x) / Math.PI + 360;
+  }
+  if (x < 0) {
+    if (y >= 0)
+      return 180 - 180 * Math.atan(-y / x) / Math.PI;
+    return -180 + 180 * Math.atan(y / x) / Math.PI + 360;
+  }
+  return 0;
+}
+function setupVector() {
+  let vectorObj = {
+    sum: vectSum,
+    sumAndSet: vectSumAndSet,
+    getAngle: (obj1, obj2) => atan7(obj2.x - obj1.x, -(obj2.y - obj1.y)),
+    getBaseVect,
+    keepInBox: (vect, box) => {
+      let changed = false;
+      if (vect.x < 0) {
+        vect.x = 0;
+        changed = true;
+      }
+      if (vect.y < 0) {
+        vect.y = 0;
+        changed = true;
+      }
+      if (vect.x + vect.speed > box.x + box.width) {
+        vect.x = box.x + box.width - vect.speed;
+        changed = true;
+      }
+      if (vect.y + vect.speed > box.y + box.height) {
+        vect.y = box.y + box.height - vect.speed;
+        changed = true;
+      }
+      return changed;
+    },
+    wrapAngle: (angle) => {
+      if (angle > 360)
+        angle -= 360;
+      if (angle < 0)
+        angle += 360;
+      return angle;
+    },
+    moveObj: (obj) => {
+      obj.x += obj.speed * Math.sin(toRadians(obj.angle));
+      obj.y += obj.speed * Math.cos(toRadians(obj.angle));
+    },
+    moveObjBack: (obj) => {
+      obj.x -= obj.speed * Math.sin(toRadians(obj.angle));
+      obj.y -= obj.speed * Math.cos(toRadians(obj.angle));
+    },
+    standards: setupVectStandards()
+  };
+  return vectorObj;
+}
+function toRadians(angle) {
+  return angle * (Math.PI / 180) + Math.PI / 2;
+}
+function setupVectStandards() {
+  return {
+    up: getBaseVect(0, 0, 90, 0.5, 1.25),
+    down: getBaseVect(0, 0, 270, 0.5, 1.25),
+    left: getBaseVect(0, 0, 180, 0.5, 1.25),
+    right: getBaseVect(0, 0, 0, 0.5, 1.25),
+    breaks: getBaseVect(0, 0, 0, 0.5, 1.25)
+  };
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   Crono,
   PeerNetObj,
   attachOnClick,
   blockKeywords,
+  colorFrmRange,
+  createCanvasBuddy,
   createLazyState,
+  createRollingAverage,
   currentLogLevel,
+  customSort,
+  dist,
   expose,
   filterKeywords,
+  getColorPair,
   getKeyNameByValue,
+  getPositionAtCompletion,
   getRandomName,
+  getRndColor,
   getSafeValueById,
   greetLaserMace,
   log,
@@ -6134,5 +6856,7 @@ function setCooldown(option, wordType) {
   randomItem,
   rng,
   sendRequest,
-  storage
+  setupVector,
+  storage,
+  sumOfDistances
 });

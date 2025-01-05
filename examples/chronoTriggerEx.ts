@@ -1,9 +1,11 @@
 // --- Example Usage in a Game Project ---
 import { Crono } from '../dist/';
 
+let playerX = 0;
+let frameCount = 0;
+
 Crono.setLoop(() => {
-    let playerX = 0;
-    let frameCount = 0;
+   
 
     // Runs 60 times per second
     Crono.runAt(60, () => {

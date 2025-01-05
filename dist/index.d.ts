@@ -149,6 +149,12 @@ declare function rng(low: number, high: number, decimals?: number | null): numbe
  * const randomFruit = randomItem(fruits); // TypeScript infers: string
  */
 declare function randomItem<T>(collection: T[]): T;
+declare function getRndColor(): string;
+declare function getColorPair(): {
+    c1: string;
+    c2: string;
+};
+declare function colorFrmRange(c1: string, c2: string, percent: number): string;
 
 /**
  * Returns a fun greeting message from LaserMace.
@@ -218,6 +224,7 @@ interface ChronoTrigger {
     setLoop: (loopFunction: (time: number) => void) => void;
     runAt: (fps: number, callback: () => void) => void;
     CurrentFPS: () => number;
+    AverageFPS: () => number;
 }
 declare const Crono: ChronoTrigger;
 
@@ -354,4 +361,160 @@ declare function PeerNetObj(operatorURL: string): PeerNetObjType;
 
 declare function getRandomName(separator?: string): string;
 
-export { Crono, DataConnectionPlus, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, attachOnClick, blockKeywords, createLazyState, currentLogLevel, expose, filterKeywords, getKeyNameByValue, getRandomName, getSafeValueById, greetLaserMace, log, logLevels, randomItem, rng, sendRequest, storage };
+type DrawOptions = {
+    color?: string;
+    transparency?: number;
+    rotationAngle?: number;
+    rotationOrigin?: "center" | "corner";
+    anchor?: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center";
+    fontSize?: number;
+    textAlign?: "left" | "right" | "center";
+    verticalAlign?: "top" | "middle" | "bottom";
+    offsetX?: number;
+    offsetY?: number;
+    showAnchor?: boolean;
+    returnDetails?: boolean;
+};
+type ShapeDetails = {
+    center: {
+        x: number;
+        y: number;
+    };
+    min: {
+        x: number;
+        y: number;
+    };
+    max: {
+        x: number;
+        y: number;
+    };
+    anchor: {
+        x: number;
+        y: number;
+    };
+    topLeft: {
+        x: number;
+        y: number;
+    };
+    topRight: {
+        x: number;
+        y: number;
+    };
+    bottomLeft: {
+        x: number;
+        y: number;
+    };
+    bottomRight: {
+        x: number;
+        y: number;
+    };
+    topCenter: {
+        x: number;
+        y: number;
+    };
+    bottomCenter: {
+        x: number;
+        y: number;
+    };
+    leftCenter: {
+        x: number;
+        y: number;
+    };
+    rightCenter: {
+        x: number;
+        y: number;
+    };
+    dimensions: {
+        width: number;
+        height: number;
+    };
+};
+type CanvasBuddy = {
+    drawCircle: (x: number, y: number, radius: number, options?: DrawOptions) => ShapeDetails | undefined;
+    drawSquare: (x: number, y: number, width: number, options?: DrawOptions) => ShapeDetails | undefined;
+    drawText: (text: string, x: number, y: number, options?: DrawOptions) => ShapeDetails | undefined;
+    drawImage: (image: HTMLImageElement, x: number, y: number, width: number, height: number, options?: DrawOptions) => ShapeDetails | undefined;
+    markBoundingBoxLocations: (boundingBox: ShapeDetails, excludeKeys?: Array<ShapeDetails>) => void;
+    eraseArea: (x: number, y: number, width: number, height: number) => void;
+    clearCanvas: () => void;
+    clearBoundingBox: (boundingBox: ShapeDetails) => void;
+    getCanvasDetails: () => {
+        width: number;
+        height: number;
+        location: {
+            top: number;
+            left: number;
+            right: number;
+            bottom: number;
+        };
+    };
+};
+declare function createCanvasBuddy(canvas: HTMLCanvasElement): CanvasBuddy;
+
+type SortingDirection = 'asc' | 'desc';
+type SortableItem = {
+    [key: string]: any;
+};
+/**
+ * Sorts a collection of objects, values, or numbers based on a specified property or directly.
+ *
+ * @param collection - The array of objects, strings, or numbers to sort.
+ * @param sortingDirection - The direction to sort ('asc' for ascending, 'desc' for descending).
+ * @param sortProperty - The property of each object to sort by (optional, used only for object collections).
+ * @param ignoreSymbols - An array of symbols to ignore during sorting (applies to string values only).
+ * @param caseInsensitive - Whether to perform case-insensitive sorting (optional, defaults to false).
+ * @returns A new array sorted based on the specified property and rules, or directly for value collections.
+ * @throws {Error} If ignoreSymbols is not an array of strings.
+ */
+declare function customSort(collection: (SortableItem | string | number)[], sortingDirection: SortingDirection, sortProperty?: string, ignoreSymbols?: string[], caseInsensitive?: boolean): (SortableItem | string | number)[];
+
+type Point = {
+    x: number;
+    y: number;
+};
+
+type Vect = Point & {
+    s: number;
+    percentageComplete: number;
+};
+declare function getPositionAtCompletion(vects: Vect[], completion: number): Point;
+
+declare function dist(obj1: Point, obj2: Point): number;
+declare function sumOfDistances(points: Point[]): number;
+
+interface Vector extends Point {
+    angle: number;
+    speed: number;
+    mass: number;
+}
+interface Box extends Point {
+    width: number;
+    height: number;
+}
+declare function getBaseVect(x?: number, y?: number, angle?: number, speed?: number, mass?: number): Vector;
+declare function vectSum(obj1: Vector, obj2: Vector): {
+    angle: number;
+    mag: number;
+    speed: number;
+};
+declare function vectSumAndSet(obj1: Vector, obj2: Vector): Vector;
+declare function setupVector(): {
+    sum: typeof vectSum;
+    sumAndSet: typeof vectSumAndSet;
+    getAngle: (obj1: Point, obj2: Point) => number;
+    getBaseVect: typeof getBaseVect;
+    keepInBox: (vect: Vector, box: Box) => boolean;
+    wrapAngle: (angle: number) => number;
+    moveObj: (obj: Vector) => void;
+    moveObjBack: (obj: Vector) => void;
+    standards: {
+        [key: string]: Vector;
+    };
+};
+
+declare function createRollingAverage(rollingWindowSize: number, maxDeltaPercent?: number): {
+    add(value: number): void;
+    getAverage(): number;
+};
+
+export { Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, Vect, Vector, attachOnClick, blockKeywords, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, dist, expose, filterKeywords, getColorPair, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, randomItem, rng, sendRequest, setupVector, storage, sumOfDistances };

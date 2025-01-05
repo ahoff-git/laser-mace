@@ -63,3 +63,59 @@ export function randomItem<T>(collection: T[]): T {
     }
     return collection[Math.floor(rng(0, collection.length-1))];
 }
+
+export function getRndColor(){
+
+    const red = Math.round(Math.random() * (234)+10);
+	const green= Math.round(Math.random() * (234)+20);
+	const blue= Math.round(Math.random() * (234)+20);
+		
+	const color ="#"+red.toString(16)+green.toString(16)+blue.toString(16);
+	
+	return color;
+}
+
+export function getColorPair() {
+  
+    const red = Math.round(Math.random() * (234) + 10);
+    const antiRed = Math.abs(red - 234) + 20;
+    const green = Math.round(Math.random() * (234) + 20);
+    const antiGreen = Math.abs(green - 234) + 20;
+    const blue = Math.round(Math.random() * (234) + 20);
+    const antiblue = Math.abs(blue - 234) + 20;
+  
+    const color = "#" + red.toString(16) + green.toString(16) + blue.toString(16);
+    const antiColor = "#" + antiRed.toString(16) + antiGreen.toString(16) + antiblue.toString(16);
+  
+    //console.log(red+" "+green+" "+blue);
+    //console.log(antiRed+" "+antiGreen+" "+antiblue);
+    return { c1: color, c2: antiColor };
+  }
+
+  export function colorFrmRange(c1: string, c2: string, percent: number) {
+    percent = percent / 100;
+  
+    const c1R = parseInt(c1.slice(1, 3), 16);
+    const c1G = parseInt(c1.slice(3, 5), 16);
+    const c1B = parseInt(c1.slice(5, 7), 16);
+  
+    const c2R = parseInt(c2.slice(1, 3), 16);
+    const c2G = parseInt(c2.slice(3, 5), 16);
+    const c2B = parseInt(c2.slice(5, 7), 16);
+  
+    const rDif = c1R - c2R;
+    const gDif = c1G - c2G;
+    const bDif = c1B - c2B;
+  
+    let red = Math.round(c1R - percent * rDif).toString(16);
+    let green = Math.round(c1G - percent * gDif).toString(16);
+    let blue = Math.round(c1B - percent * bDif).toString(16);
+  
+    if (red.length < 2) { red = "0" + red; }
+    if (green.length < 2) { green = "0" + green; }
+    if (blue.length < 2) { blue = "0" + blue; }
+  
+    const color = "#" + red + green + blue;
+  
+    return color;
+  }

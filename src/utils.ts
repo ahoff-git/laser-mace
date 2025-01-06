@@ -151,4 +151,8 @@ export function defineComputedProperties<T>(
     defineComputedProperty(target, name, getter);
   });
 }
-  
+
+export function removeByIdInPlace(array: any[], idToRemove: any) {
+  const index = array.findIndex(item => item.id === idToRemove);
+  if (index !== -1) array.splice(index, 1);
+}

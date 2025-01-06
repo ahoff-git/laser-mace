@@ -1,15 +1,15 @@
 type CacheMode = "always" | "once" | "timed";
 
 /**
- * Describes the definition of the lazy state object. 
+ * Describes the definition of the lazy state object.
  * Each property can be:
- * - `null`: A plain state property that can be updated directly.
+ * - A plain value: `null`, string, number, or object.
  * - `[CacheMode, ComputeFunction, Expiration?, Dependencies?]`: A computed property.
  */
 type LazyStateDefinition<T extends Record<string, any>> = {
   [K in keyof T]:
     | [CacheMode, (context: T) => Promise<T[K]> | T[K], number?, (keyof T)[]?]
-    | null;
+    | T[K];
 };
 
 /**
@@ -17,10 +17,10 @@ type LazyStateDefinition<T extends Record<string, any>> = {
  *
  * @template T - The type of the state object.
  * @param definitions - An object that defines the properties of the lazy state:
- *  - `null` for plain state properties.
+ *  - Plain values: `null`, string, number, or object.
  *  - `[CacheMode, ComputeFunction, Expiration?, Dependencies?]` for computed properties:
  *    - `CacheMode`: Determines how the computed property is cached. Options:
- *      - `"always"`: Recompute the value every time it's accessed.
+ *      - `"always"`: Recompute the value every time it is accessed.
  *      - `"once"`: Compute the value once and cache it permanently.
  *      - `"timed"`: Cache the value for a specific duration.
  *    - `ComputeFunction`: A function that computes the property value based on the current state.
@@ -33,20 +33,17 @@ type LazyStateDefinition<T extends Record<string, any>> = {
  * @example
  * const state = createLazyState<{
  *   firstName: string;
- *   lastName: string;
+ *   age: number;
+ *   metadata: Record<string, any>;
  *   fullName: string;
  *   location: Promise<string>;
  * }>({
- *   firstName: null, // Plain state
- *   lastName: null, // Plain state
- *   fullName: ["once", (context) => `${context.firstName} ${context.lastName}`], // Computed property
+ *   firstName: "John", // Plain state
+ *   age: 30, // Plain state
+ *   metadata: {}, // Plain state
+ *   fullName: ["once", (context) => `${context.firstName} (age ${context.age})`], // Computed property
  *   location: ["timed", async () => "Seattle", 5000], // Computed property with caching
  * });
- *
- * state.firstName = "John";
- * state.lastName = "Doe";
- * console.log(state.fullName); // "John Doe"
- * console.log(await state.location); // "Seattle"
  */
 export function createLazyState<T extends Record<string, any>>(
   definitions: LazyStateDefinition<T>
@@ -55,10 +52,17 @@ export function createLazyState<T extends Record<string, any>>(
   const cache: Partial<Record<keyof T, T[keyof T] | Promise<T[keyof T]>>> = {};
   const timestamps: Partial<Record<keyof T, number>> = {};
 
+  // Initialize plain state properties
+  for (const [key, definition] of Object.entries(definitions)) {
+    if (definition !== null && !Array.isArray(definition)) {
+      internalState[key as keyof T] = definition as T[keyof T];
+    }
+  }
+
   // Invalidates caches of dependent properties when a plain property changes.
   const invalidateDependentCaches = (key: keyof T): void => {
     for (const [depKey, definition] of Object.entries(definitions)) {
-      if (definition && definition[3]?.includes(key)) {
+      if (Array.isArray(definition) && definition[3]?.includes(key)) {
         delete cache[depKey as keyof T];
         delete timestamps[depKey as keyof T];
       }
@@ -71,7 +75,6 @@ export function createLazyState<T extends Record<string, any>>(
     const value = computeFn(proxy as T);
     return value instanceof Promise ? value : value; // Let the caller handle the promise
   };
-  
 
   // Proxy to handle plain and computed properties dynamically.
   const proxy = new Proxy({} as T, {
@@ -82,12 +85,17 @@ export function createLazyState<T extends Record<string, any>>(
 
       const definition = definitions[prop as keyof T];
 
-      if (definition === null) {
+      if (definition !== null && !Array.isArray(definition)) {
         // Plain state property
         return internalState[prop as keyof T];
       }
 
-      const [mode, computeFn, expirationMs] = definition;
+      const [mode, computeFn, expirationMs] = definition as [
+        CacheMode,
+        (context: T) => Promise<T[keyof T]> | T[keyof T],
+        number?,
+        (keyof T)[]?
+      ];
 
       if (mode === "always") {
         return resolveValue(computeFn);
@@ -120,7 +128,7 @@ export function createLazyState<T extends Record<string, any>>(
 
       const definition = definitions[prop as keyof T];
 
-      if (definition === null) {
+      if (definition !== null && !Array.isArray(definition)) {
         // Update plain state
         internalState[prop as keyof T] = value;
         invalidateDependentCaches(prop as keyof T);

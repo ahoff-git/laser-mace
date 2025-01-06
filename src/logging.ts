@@ -31,7 +31,7 @@ export const currentLogLevel = { value: logLevels.debug };
  * - `blockKeywords`: Do not log messages containing these keywords.
  */
 export const filterKeywords: string[] = [];
-export const blockKeywords: string[] = ["getRandomWord", "applyCooldowns"];
+export const blockKeywords: string[] = ["getRandomWord", "applyCooldowns", "calculateBoundingBox"];
 
 /**
  * Logs a message to the console based on the specified log level.

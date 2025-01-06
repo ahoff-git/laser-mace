@@ -174,21 +174,21 @@ type CacheMode = "always" | "once" | "timed";
 /**
  * Describes the definition of the lazy state object.
  * Each property can be:
- * - `null`: A plain state property that can be updated directly.
+ * - A plain value: `null`, string, number, or object.
  * - `[CacheMode, ComputeFunction, Expiration?, Dependencies?]`: A computed property.
  */
 type LazyStateDefinition<T extends Record<string, any>> = {
-    [K in keyof T]: [CacheMode, (context: T) => Promise<T[K]> | T[K], number?, (keyof T)[]?] | null;
+    [K in keyof T]: [CacheMode, (context: T) => Promise<T[K]> | T[K], number?, (keyof T)[]?] | T[K];
 };
 /**
  * Creates a lazy state object with defined plain and computed properties.
  *
  * @template T - The type of the state object.
  * @param definitions - An object that defines the properties of the lazy state:
- *  - `null` for plain state properties.
+ *  - Plain values: `null`, string, number, or object.
  *  - `[CacheMode, ComputeFunction, Expiration?, Dependencies?]` for computed properties:
  *    - `CacheMode`: Determines how the computed property is cached. Options:
- *      - `"always"`: Recompute the value every time it's accessed.
+ *      - `"always"`: Recompute the value every time it is accessed.
  *      - `"once"`: Compute the value once and cache it permanently.
  *      - `"timed"`: Cache the value for a specific duration.
  *    - `ComputeFunction`: A function that computes the property value based on the current state.
@@ -201,20 +201,17 @@ type LazyStateDefinition<T extends Record<string, any>> = {
  * @example
  * const state = createLazyState<{
  *   firstName: string;
- *   lastName: string;
+ *   age: number;
+ *   metadata: Record<string, any>;
  *   fullName: string;
  *   location: Promise<string>;
  * }>({
- *   firstName: null, // Plain state
- *   lastName: null, // Plain state
- *   fullName: ["once", (context) => `${context.firstName} ${context.lastName}`], // Computed property
+ *   firstName: "John", // Plain state
+ *   age: 30, // Plain state
+ *   metadata: {}, // Plain state
+ *   fullName: ["once", (context) => `${context.firstName} (age ${context.age})`], // Computed property
  *   location: ["timed", async () => "Seattle", 5000], // Computed property with caching
  * });
- *
- * state.firstName = "John";
- * state.lastName = "Doe";
- * console.log(state.fullName); // "John Doe"
- * console.log(await state.location); // "Seattle"
  */
 declare function createLazyState<T extends Record<string, any>>(definitions: LazyStateDefinition<T>): T;
 
@@ -315,6 +312,7 @@ declare function defineComputedProperty<T>(target: T, name: string, getter: () =
  * console.log(obj.width, obj.height); // Calls the getters
  */
 declare function defineComputedProperties<T>(target: T, properties: [string, () => any][]): void;
+declare function removeByIdInPlace(array: any[], idToRemove: any): void;
 
 /**
  * Sends a POST request to a specified URL with the given payload.
@@ -461,6 +459,114 @@ type ShapeDetails = {
         height: number;
     };
 };
+type BoundingBox = {
+    center: {
+        x: number;
+        y: number;
+    };
+    min: {
+        x: number;
+        y: number;
+    };
+    max: {
+        x: number;
+        y: number;
+    };
+    anchor: {
+        x: number;
+        y: number;
+    };
+    topLeft: {
+        x: number;
+        y: number;
+    };
+    topRight: {
+        x: number;
+        y: number;
+    };
+    bottomLeft: {
+        x: number;
+        y: number;
+    };
+    bottomRight: {
+        x: number;
+        y: number;
+    };
+    topCenter: {
+        x: number;
+        y: number;
+    };
+    bottomCenter: {
+        x: number;
+        y: number;
+    };
+    leftCenter: {
+        x: number;
+        y: number;
+    };
+    rightCenter: {
+        x: number;
+        y: number;
+    };
+    dimensions: {
+        width: number;
+        height: number;
+    };
+} | undefined;
+declare function calculateBoundingBox(x: number, y: number, width: number, height: number, options?: DrawOptions, isCircle?: boolean): {
+    center: {
+        x: number;
+        y: number;
+    };
+    min: {
+        x: number;
+        y: number;
+    };
+    max: {
+        x: number;
+        y: number;
+    };
+    anchor: {
+        x: number;
+        y: number;
+    };
+    topLeft: {
+        x: number;
+        y: number;
+    };
+    topRight: {
+        x: number;
+        y: number;
+    };
+    bottomLeft: {
+        x: number;
+        y: number;
+    };
+    bottomRight: {
+        x: number;
+        y: number;
+    };
+    topCenter: {
+        x: number;
+        y: number;
+    };
+    bottomCenter: {
+        x: number;
+        y: number;
+    };
+    leftCenter: {
+        x: number;
+        y: number;
+    };
+    rightCenter: {
+        x: number;
+        y: number;
+    };
+    dimensions: {
+        width: number;
+        height: number;
+    };
+} | undefined;
 type CanvasBuddy = {
     drawCircle: (x: number, y: number, radius: number, options?: DrawOptions) => ShapeDetails | undefined;
     drawSquare: (x: number, y: number, width: number, options?: DrawOptions) => ShapeDetails | undefined;
@@ -509,6 +615,7 @@ declare function getPositionAtCompletion(vects: Vect[], completion: number): Poi
 
 declare function dist(obj1: Point, obj2: Point): number;
 declare function sumOfDistances(points: Point[]): number;
+declare function squareOverlap(boxA: BoundingBox, boxB: BoundingBox): boolean;
 
 interface Vector extends Point {
     angle: number;
@@ -545,4 +652,4 @@ declare function createRollingAverage(rollingWindowSize: number, maxDeltaPercent
     getAverage(): number;
 };
 
-export { Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, Vect, Vector, attachOnClick, blockKeywords, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, randomItem, rng, sendRequest, setupVector, storage, sumOfDistances };
+export { BoundingBox, Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, Vect, Vector, attachOnClick, blockKeywords, calculateBoundingBox, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, randomItem, removeByIdInPlace, rng, sendRequest, setupVector, squareOverlap, storage, sumOfDistances };

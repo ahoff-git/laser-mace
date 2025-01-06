@@ -712,7 +712,7 @@ var logLevels = {
 };
 var currentLogLevel = { value: logLevels.debug };
 var filterKeywords = [];
-var blockKeywords = ["getRandomWord", "applyCooldowns"];
+var blockKeywords = ["getRandomWord", "applyCooldowns", "calculateBoundingBox"];
 function log(level = logLevels.debug, message, keywords = [], ...data) {
   if (!Object.values(logLevels).includes(level)) {
     console.error(`[LOG ERROR] Invalid log level: ${level}`);
@@ -808,9 +808,14 @@ function createLazyState(definitions) {
   const internalState = {};
   const cache = {};
   const timestamps = {};
+  for (const [key, definition] of Object.entries(definitions)) {
+    if (definition !== null && !Array.isArray(definition)) {
+      internalState[key] = definition;
+    }
+  }
   const invalidateDependentCaches = (key) => {
     for (const [depKey, definition] of Object.entries(definitions)) {
-      if (definition && definition[3]?.includes(key)) {
+      if (Array.isArray(definition) && definition[3]?.includes(key)) {
         delete cache[depKey];
         delete timestamps[depKey];
       }
@@ -826,7 +831,7 @@ function createLazyState(definitions) {
         throw new Error(`Property '${String(prop)}' is not defined.`);
       }
       const definition = definitions[prop];
-      if (definition === null) {
+      if (definition !== null && !Array.isArray(definition)) {
         return internalState[prop];
       }
       const [mode, computeFn, expirationMs] = definition;
@@ -855,7 +860,7 @@ function createLazyState(definitions) {
         throw new Error(`Property '${String(prop)}' is not defined.`);
       }
       const definition = definitions[prop];
-      if (definition === null) {
+      if (definition !== null && !Array.isArray(definition)) {
         internalState[prop] = value;
         invalidateDependentCaches(prop);
         return true;
@@ -1024,6 +1029,11 @@ function defineComputedProperties(target, properties) {
   properties.forEach(([name, getter]) => {
     defineComputedProperty(target, name, getter);
   });
+}
+function removeByIdInPlace(array, idToRemove) {
+  const index = array.findIndex((item) => item.id === idToRemove);
+  if (index !== -1)
+    array.splice(index, 1);
 }
 
 // src/httpRequests.ts
@@ -6188,6 +6198,112 @@ function setCooldown(option, wordType) {
 }
 
 // src/canvasBuddy.ts
+function calculateBoundingBox(x, y, width, height, options = { returnDetails: true }, isCircle = false) {
+  if (!options.returnDetails) {
+    return;
+  }
+  const {
+    rotationAngle = 0,
+    rotationOrigin = "center",
+    anchor = "top-left"
+  } = options;
+  const radians = rotationAngle * Math.PI / 180;
+  const centerX = rotationOrigin === "center" ? x + width / 2 : x;
+  const centerY = rotationOrigin === "center" ? y + height / 2 : y;
+  let anchorX = x;
+  let anchorY = y;
+  switch (anchor) {
+    case "top-left":
+      break;
+    case "top-right":
+      anchorX += width;
+      break;
+    case "bottom-left":
+      anchorY += height;
+      break;
+    case "bottom-right":
+      anchorX += width;
+      anchorY += height;
+      break;
+    case "center":
+      anchorX += width / 2;
+      anchorY += height / 2;
+      break;
+  }
+  if (isCircle) {
+    const radius = width / 2;
+    return {
+      center: { x: centerX, y: centerY },
+      min: { x: centerX - radius, y: centerY - radius },
+      max: { x: centerX + radius, y: centerY + radius },
+      anchor: { x: anchorX, y: anchorY },
+      topLeft: { x: centerX - radius, y: centerY - radius },
+      topRight: { x: centerX + radius, y: centerY - radius },
+      bottomLeft: { x: centerX - radius, y: centerY + radius },
+      bottomRight: { x: centerX + radius, y: centerY + radius },
+      topCenter: { x: centerX, y: centerY - radius },
+      bottomCenter: { x: centerX, y: centerY + radius },
+      leftCenter: { x: centerX - radius, y: centerY },
+      rightCenter: { x: centerX + radius, y: centerY },
+      dimensions: {
+        width: radius * 2,
+        height: radius * 2
+      }
+    };
+  }
+  const corners = [
+    { x, y },
+    // Top-left
+    { x: x + width, y },
+    // Top-right
+    { x, y: y + height },
+    // Bottom-left
+    { x: x + width, y: y + height }
+    // Bottom-right
+  ];
+  const rotatedCorners = corners.map((corner) => {
+    const dx = corner.x - centerX;
+    const dy = corner.y - centerY;
+    return {
+      x: centerX + dx * Math.cos(radians) - dy * Math.sin(radians),
+      y: centerY + dx * Math.sin(radians) + dy * Math.cos(radians)
+    };
+  });
+  const xs = rotatedCorners.map((corner) => corner.x);
+  const ys = rotatedCorners.map((corner) => corner.y);
+  const retVal = {
+    center: { x: centerX, y: centerY },
+    min: { x: Math.min(...xs), y: Math.min(...ys) },
+    max: { x: Math.max(...xs), y: Math.max(...ys) },
+    anchor: { x: anchorX, y: anchorY },
+    topLeft: rotatedCorners[0],
+    topRight: rotatedCorners[1],
+    bottomLeft: rotatedCorners[2],
+    bottomRight: rotatedCorners[3],
+    topCenter: {
+      x: (rotatedCorners[0].x + rotatedCorners[1].x) / 2,
+      y: rotatedCorners[0].y
+    },
+    bottomCenter: {
+      x: (rotatedCorners[2].x + rotatedCorners[3].x) / 2,
+      y: rotatedCorners[2].y
+    },
+    leftCenter: {
+      x: rotatedCorners[0].x,
+      y: (rotatedCorners[0].y + rotatedCorners[2].y) / 2
+    },
+    rightCenter: {
+      x: rotatedCorners[1].x,
+      y: (rotatedCorners[1].y + rotatedCorners[3].y) / 2
+    },
+    dimensions: {
+      width: Math.abs(Math.max(...xs) - Math.min(...xs)),
+      height: Math.abs(Math.max(...ys) - Math.min(...ys))
+    }
+  };
+  log(logLevels.debug, "CalcBoundingBox ran:", ["calculateBoundingBox", "spam"], retVal);
+  return retVal;
+}
 function createCanvasBuddy(canvas) {
   const ctx = canvas.getContext("2d");
   const canvasState = createLazyState({
@@ -6362,110 +6478,6 @@ function createCanvasBuddy(canvas) {
         verticalAlign
       });
     });
-  }
-  function calculateBoundingBox(x, y, width, height, options = {}, isCircle = false) {
-    if (!options.returnDetails) {
-      return;
-    }
-    const {
-      rotationAngle = 0,
-      rotationOrigin = "center",
-      anchor = "top-left"
-    } = options;
-    const radians = rotationAngle * Math.PI / 180;
-    const centerX = rotationOrigin === "center" ? x + width / 2 : x;
-    const centerY = rotationOrigin === "center" ? y + height / 2 : y;
-    let anchorX = x;
-    let anchorY = y;
-    switch (anchor) {
-      case "top-left":
-        break;
-      case "top-right":
-        anchorX += width;
-        break;
-      case "bottom-left":
-        anchorY += height;
-        break;
-      case "bottom-right":
-        anchorX += width;
-        anchorY += height;
-        break;
-      case "center":
-        anchorX += width / 2;
-        anchorY += height / 2;
-        break;
-    }
-    if (isCircle) {
-      const radius = width / 2;
-      return {
-        center: { x: centerX, y: centerY },
-        min: { x: centerX - radius, y: centerY - radius },
-        max: { x: centerX + radius, y: centerY + radius },
-        anchor: { x: anchorX, y: anchorY },
-        topLeft: { x: centerX - radius, y: centerY - radius },
-        topRight: { x: centerX + radius, y: centerY - radius },
-        bottomLeft: { x: centerX - radius, y: centerY + radius },
-        bottomRight: { x: centerX + radius, y: centerY + radius },
-        topCenter: { x: centerX, y: centerY - radius },
-        bottomCenter: { x: centerX, y: centerY + radius },
-        leftCenter: { x: centerX - radius, y: centerY },
-        rightCenter: { x: centerX + radius, y: centerY },
-        dimensions: {
-          width: radius * 2,
-          height: radius * 2
-        }
-      };
-    }
-    const corners = [
-      { x, y },
-      // Top-left
-      { x: x + width, y },
-      // Top-right
-      { x, y: y + height },
-      // Bottom-left
-      { x: x + width, y: y + height }
-      // Bottom-right
-    ];
-    const rotatedCorners = corners.map((corner) => {
-      const dx = corner.x - centerX;
-      const dy = corner.y - centerY;
-      return {
-        x: centerX + dx * Math.cos(radians) - dy * Math.sin(radians),
-        y: centerY + dx * Math.sin(radians) + dy * Math.cos(radians)
-      };
-    });
-    const xs = rotatedCorners.map((corner) => corner.x);
-    const ys = rotatedCorners.map((corner) => corner.y);
-    return {
-      center: { x: centerX, y: centerY },
-      min: { x: Math.min(...xs), y: Math.min(...ys) },
-      max: { x: Math.max(...xs), y: Math.max(...ys) },
-      anchor: { x: anchorX, y: anchorY },
-      topLeft: rotatedCorners[0],
-      topRight: rotatedCorners[1],
-      bottomLeft: rotatedCorners[2],
-      bottomRight: rotatedCorners[3],
-      topCenter: {
-        x: (rotatedCorners[0].x + rotatedCorners[1].x) / 2,
-        y: rotatedCorners[0].y
-      },
-      bottomCenter: {
-        x: (rotatedCorners[2].x + rotatedCorners[3].x) / 2,
-        y: rotatedCorners[2].y
-      },
-      leftCenter: {
-        x: rotatedCorners[0].x,
-        y: (rotatedCorners[0].y + rotatedCorners[2].y) / 2
-      },
-      rightCenter: {
-        x: rotatedCorners[1].x,
-        y: (rotatedCorners[1].y + rotatedCorners[3].y) / 2
-      },
-      dimensions: {
-        width: Math.abs(Math.max(...xs) - Math.min(...xs)),
-        height: Math.abs(Math.max(...ys) - Math.min(...ys))
-      }
-    };
   }
   function drawCircle(x, y, radius, options = {}) {
     applyOptions(options);
@@ -6719,6 +6731,14 @@ function sumOfDistances(points) {
   }
   return totalDistance;
 }
+function squareOverlap(boxA, boxB) {
+  if (!boxA || !boxB || !boxA.max || !boxB.max || !boxA.max.x || !boxB.max.x) {
+    return false;
+  }
+  const overlapX = boxA?.max.x > boxB?.min.x && boxA?.min.x < boxB?.max.x;
+  const overlapY = boxA?.max.y > boxB?.min.y && boxA?.min.y < boxB?.max.y;
+  return overlapX && overlapY;
+}
 
 // src/vector.ts
 function getBaseVect(x = 0, y = 0, angle = 0, speed = 0, mass = 0) {
@@ -6828,6 +6848,7 @@ export {
   PeerNetObj,
   attachOnClick,
   blockKeywords,
+  calculateBoundingBox,
   colorFrmRange,
   createCanvasBuddy,
   createLazyState,
@@ -6849,9 +6870,11 @@ export {
   log,
   logLevels,
   randomItem,
+  removeByIdInPlace,
   rng,
   sendRequest,
   setupVector,
+  squareOverlap,
   storage,
   sumOfDistances
 };

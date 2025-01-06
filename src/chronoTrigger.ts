@@ -16,7 +16,7 @@ function createChronoTrigger(): ChronoTrigger {
     let loop: ((time: number) => void) | null = null;
     let running = false;
     let fps = 0; // Tracks the current running FPS
-    const fpsHist = createRollingAverage(400);
+    const fpsHist = createRollingAverage(100);
     let lastFrameTime = 0;
 
     const Start = (): void => {
@@ -29,7 +29,8 @@ function createChronoTrigger(): ChronoTrigger {
                 if (lastFrameTime > 0) {
                     const delta = time - lastFrameTime;
                     // using Math.max to avoid divide by 0
-                    fps = Math.round(1000 / Math.max(delta,1));
+                    const newFps = Math.round(1000 / Math.max(delta,1));
+                    fps = newFps!= 1000? newFps: fps;
                     fpsHist.add(fps);
                 }
                 lastFrameTime = time;

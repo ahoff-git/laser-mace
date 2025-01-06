@@ -1,3 +1,6 @@
+import { createLazyState } from "./lazyState";
+import { defineComputedProperties } from "./utils";
+
 export type DrawOptions = {
   color?: string; // Fill or stroke color
   transparency?: number; // Transparency from 0 to 1
@@ -38,20 +41,31 @@ export type CanvasBuddy = {
   eraseArea: (x: number, y: number, width: number, height: number) => void;
   clearCanvas: () => void;
   clearBoundingBox: (boundingBox: ShapeDetails) => void;
-  getCanvasDetails: () => {
-    width: number; height: number; location: { top: number; left: number; right: number; bottom: number; };
-  }
+  width: number;
+  height: number;
+  top: number;
+  left: number;
+  right: number;
+  bottom: number;
 }
 
 
 export function createCanvasBuddy(canvas: HTMLCanvasElement): CanvasBuddy {
   const ctx = canvas.getContext("2d")!;
 
+  const canvasState = createLazyState({
+    canvasDetails: ['timed', _getCanvasDetails, 1000]
+  })
+
   if (!ctx) {
     throw new Error("Failed to get 2D context");
   }
 
   function getCanvasDetails() {
+    return canvasState.canvasDetails;
+  }
+
+  function _getCanvasDetails() {
     const { width, height } = canvas; // Canvas width and height
     const rect = canvas.getBoundingClientRect(); // Canvas location on the page
 
@@ -544,7 +558,7 @@ export function createCanvasBuddy(canvas: HTMLCanvasElement): CanvasBuddy {
     ctx.clearRect(min.x, min.y, dimensions.width, dimensions.height);
   }
 
-  return {
+  const retObj = {
     drawCircle,
     drawSquare,
     drawText,
@@ -553,6 +567,18 @@ export function createCanvasBuddy(canvas: HTMLCanvasElement): CanvasBuddy {
     eraseArea,
     clearCanvas,
     clearBoundingBox,
-    getCanvasDetails
-  };
+  } as CanvasBuddy;
+
+  //width, height, top, left, right, bottom
+  defineComputedProperties(retObj, [
+    ['width', ()=> getCanvasDetails().width],
+    ['height', ()=> getCanvasDetails().height],
+    ['top', ()=> getCanvasDetails().location.top],
+    ['left', ()=> getCanvasDetails().location.left],
+    ['right', ()=> getCanvasDetails().location.right],
+    ['bottom', ()=> getCanvasDetails().location.bottom],
+  ]);
+
+  retObj.width
+  return retObj;
 }

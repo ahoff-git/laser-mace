@@ -1,3 +1,5 @@
+import { log, logLevels } from "./logging";
+
 export function createRollingAverage(
     rollingWindowSize: number,
     maxDeltaPercent: number = 10
@@ -16,30 +18,33 @@ export function createRollingAverage(
         // Compute the current average and dynamic max delta
         const currentAverage = values.length > 0 ? sum / values.length : 0;
         const maxDelta = currentAverage * (1 + maxDeltaPercent / 100);
-  
-        // Clamp the input value if it exceeds the dynamic threshold
-        const adjustedValue =
-          currentAverage > 0 && value > maxDelta ? maxDelta : value;
-  
-        // Add the new value with its weight
-        values.push(adjustedValue);
-        sum += adjustedValue;
-  
+      
+        // Ignore the input value if it exceeds the dynamic threshold
+        if (currentAverage > 0 && value > maxDelta && values.length > (rollingWindowSize/2)) {
+          log(logLevels.debug, `Sorry... ${value} didn't make the cut`, ['rollingAverage', 'badValue', 'math'])
+          return;
+        }
+      
+        // Add the valid value
+        values.push(value);
+        sum += value;
+      
         // Increase the weighting factor during initialization
         const currentWeight = Math.min(values.length, rollingWindowSize);
-        weightedSum += adjustedValue * currentWeight;
+        weightedSum += value * currentWeight;
         weight += currentWeight;
-  
+      
         // Remove the oldest value if the rolling window exceeds its limit
         if (values.length > rollingWindowSize) {
           const removedValue = values.shift()!;
           sum -= removedValue;
-  
+      
           // Adjust the weighted sum and total weight
           weightedSum -= removedValue * rollingWindowSize;
           weight -= rollingWindowSize;
         }
-      },
+      }
+      ,
   
       getAverage(): number {
         // Use the weighted average during initialization, then switch to normal

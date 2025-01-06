@@ -283,6 +283,38 @@ declare function getSafeValueById(id: string, defaultValue?: string | null): str
  * // Clicking the button logs: "Hello, John" "Callback executed!"
  */
 declare function attachOnClick(id: string, fn: (...args: any[]) => any, params: any[], callback?: (result: any, ...callbackParams: any[]) => void, ...callbackParams: any[]): void;
+/**
+ * Defines a computed property on an object with a specified name and getter function.
+ *
+ * @template T - The type of the target object.
+ * @param target - The object on which the property is to be defined.
+ * @param name - The name of the property to define.
+ * @param getter - A function that computes and returns the value of the property.
+ *
+ * @example
+ * const obj = {};
+ * defineComputedProperty(obj, 'dynamicValue', () => Math.random());
+ * console.log(obj.dynamicValue); // Calls the getter and returns a random number
+ */
+declare function defineComputedProperty<T>(target: T, name: string, getter: () => any): void;
+/**
+ * Defines multiple computed properties on an object using a list of [name, getter] pairs.
+ *
+ * @template T - The type of the target object.
+ * @param target - The object on which the properties are to be defined.
+ * @param properties - An array of [name, getter] pairs, where:
+ *   - `name`: The name of the property.
+ *   - `getter`: A function that computes and returns the value of the property.
+ *
+ * @example
+ * const obj = {};
+ * defineComputedProperties(obj, [
+ *   ['width', () => 100],
+ *   ['height', () => 200],
+ * ]);
+ * console.log(obj.width, obj.height); // Calls the getters
+ */
+declare function defineComputedProperties<T>(target: T, properties: [string, () => any][]): void;
 
 /**
  * Sends a POST request to a specified URL with the given payload.
@@ -438,16 +470,12 @@ type CanvasBuddy = {
     eraseArea: (x: number, y: number, width: number, height: number) => void;
     clearCanvas: () => void;
     clearBoundingBox: (boundingBox: ShapeDetails) => void;
-    getCanvasDetails: () => {
-        width: number;
-        height: number;
-        location: {
-            top: number;
-            left: number;
-            right: number;
-            bottom: number;
-        };
-    };
+    width: number;
+    height: number;
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
 };
 declare function createCanvasBuddy(canvas: HTMLCanvasElement): CanvasBuddy;
 
@@ -517,4 +545,4 @@ declare function createRollingAverage(rollingWindowSize: number, maxDeltaPercent
     getAverage(): number;
 };
 
-export { Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, Vect, Vector, attachOnClick, blockKeywords, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, dist, expose, filterKeywords, getColorPair, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, randomItem, rng, sendRequest, setupVector, storage, sumOfDistances };
+export { Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, Vect, Vector, attachOnClick, blockKeywords, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, randomItem, rng, sendRequest, setupVector, storage, sumOfDistances };

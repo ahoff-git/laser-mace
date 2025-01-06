@@ -102,4 +102,53 @@ export function attachOnClick(
     }
   }
   
+/**
+ * Defines a computed property on an object with a specified name and getter function.
+ *
+ * @template T - The type of the target object.
+ * @param target - The object on which the property is to be defined.
+ * @param name - The name of the property to define.
+ * @param getter - A function that computes and returns the value of the property.
+ *
+ * @example
+ * const obj = {};
+ * defineComputedProperty(obj, 'dynamicValue', () => Math.random());
+ * console.log(obj.dynamicValue); // Calls the getter and returns a random number
+ */
+export function defineComputedProperty<T>(
+  target: T,
+  name: string,
+  getter: () => any
+): void {
+  Object.defineProperty(target, name, {
+    get: getter,
+    enumerable: true,
+  });
+}
+
+/**
+ * Defines multiple computed properties on an object using a list of [name, getter] pairs.
+ *
+ * @template T - The type of the target object.
+ * @param target - The object on which the properties are to be defined.
+ * @param properties - An array of [name, getter] pairs, where:
+ *   - `name`: The name of the property.
+ *   - `getter`: A function that computes and returns the value of the property.
+ *
+ * @example
+ * const obj = {};
+ * defineComputedProperties(obj, [
+ *   ['width', () => 100],
+ *   ['height', () => 200],
+ * ]);
+ * console.log(obj.width, obj.height); // Calls the getters
+ */
+export function defineComputedProperties<T>(
+  target: T,
+  properties: [string, () => any][]
+): void {
+  properties.forEach(([name, getter]) => {
+    defineComputedProperty(target, name, getter);
+  });
+}
   

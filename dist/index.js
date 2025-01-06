@@ -655,6 +655,8 @@ __export(src_exports, {
   createRollingAverage: () => createRollingAverage,
   currentLogLevel: () => currentLogLevel,
   customSort: () => customSort,
+  defineComputedProperties: () => defineComputedProperties,
+  defineComputedProperty: () => defineComputedProperty,
   dist: () => dist,
   expose: () => expose,
   filterKeywords: () => filterKeywords,
@@ -930,11 +932,14 @@ function createRollingAverage(rollingWindowSize, maxDeltaPercent = 10) {
     add(value) {
       const currentAverage = values.length > 0 ? sum / values.length : 0;
       const maxDelta = currentAverage * (1 + maxDeltaPercent / 100);
-      const adjustedValue = currentAverage > 0 && value > maxDelta ? maxDelta : value;
-      values.push(adjustedValue);
-      sum += adjustedValue;
+      if (currentAverage > 0 && value > maxDelta && values.length > rollingWindowSize / 2) {
+        log(logLevels.debug, `Sorry... ${value} didn't make the cut`, ["rollingAverage", "badValue", "math"]);
+        return;
+      }
+      values.push(value);
+      sum += value;
       const currentWeight = Math.min(values.length, rollingWindowSize);
-      weightedSum += adjustedValue * currentWeight;
+      weightedSum += value * currentWeight;
       weight += currentWeight;
       if (values.length > rollingWindowSize) {
         const removedValue = values.shift();
@@ -958,7 +963,7 @@ function createChronoTrigger() {
   let loop = null;
   let running = false;
   let fps = 0;
-  const fpsHist = createRollingAverage(400);
+  const fpsHist = createRollingAverage(100);
   let lastFrameTime = 0;
   const Start = () => {
     if (typeof loop !== "function") {
@@ -969,7 +974,8 @@ function createChronoTrigger() {
       if (running) {
         if (lastFrameTime > 0) {
           const delta = time - lastFrameTime;
-          fps = Math.round(1e3 / Math.max(delta, 1));
+          const newFps = Math.round(1e3 / Math.max(delta, 1));
+          fps = newFps != 1e3 ? newFps : fps;
           fpsHist.add(fps);
         }
         lastFrameTime = time;
@@ -1045,6 +1051,17 @@ function attachOnClick(id, fn, params, callback, ...callbackParams) {
   } else {
     console.error(`Element with ID "${id}" not found.`);
   }
+}
+function defineComputedProperty(target, name, getter) {
+  Object.defineProperty(target, name, {
+    get: getter,
+    enumerable: true
+  });
+}
+function defineComputedProperties(target, properties) {
+  properties.forEach(([name, getter]) => {
+    defineComputedProperty(target, name, getter);
+  });
 }
 
 // src/httpRequests.ts
@@ -6211,10 +6228,16 @@ function setCooldown(option, wordType) {
 // src/canvasBuddy.ts
 function createCanvasBuddy(canvas) {
   const ctx = canvas.getContext("2d");
+  const canvasState = createLazyState({
+    canvasDetails: ["timed", _getCanvasDetails, 1e3]
+  });
   if (!ctx) {
     throw new Error("Failed to get 2D context");
   }
   function getCanvasDetails() {
+    return canvasState.canvasDetails;
+  }
+  function _getCanvasDetails() {
     const { width, height } = canvas;
     const rect = canvas.getBoundingClientRect();
     return {
@@ -6586,7 +6609,7 @@ function createCanvasBuddy(canvas) {
     const { min, dimensions } = boundingBox;
     ctx.clearRect(min.x, min.y, dimensions.width, dimensions.height);
   }
-  return {
+  const retObj = {
     drawCircle,
     drawSquare,
     drawText,
@@ -6594,9 +6617,18 @@ function createCanvasBuddy(canvas) {
     markBoundingBoxLocations,
     eraseArea,
     clearCanvas,
-    clearBoundingBox,
-    getCanvasDetails
+    clearBoundingBox
   };
+  defineComputedProperties(retObj, [
+    ["width", () => getCanvasDetails().width],
+    ["height", () => getCanvasDetails().height],
+    ["top", () => getCanvasDetails().location.top],
+    ["left", () => getCanvasDetails().location.left],
+    ["right", () => getCanvasDetails().location.right],
+    ["bottom", () => getCanvasDetails().location.bottom]
+  ]);
+  retObj.width;
+  return retObj;
 }
 
 // src/customSort.ts
@@ -6841,6 +6873,8 @@ function setupVectStandards() {
   createRollingAverage,
   currentLogLevel,
   customSort,
+  defineComputedProperties,
+  defineComputedProperty,
   dist,
   expose,
   filterKeywords,

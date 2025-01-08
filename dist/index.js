@@ -662,6 +662,7 @@ __export(src_exports, {
   expose: () => expose,
   filterKeywords: () => filterKeywords,
   getColorPair: () => getColorPair,
+  getContrastingColor: () => getContrastingColor,
   getKeyNameByValue: () => getKeyNameByValue,
   getPositionAtCompletion: () => getPositionAtCompletion,
   getRandomName: () => getRandomName,
@@ -673,6 +674,7 @@ __export(src_exports, {
   randomItem: () => randomItem,
   removeByIdInPlace: () => removeByIdInPlace,
   rng: () => rng,
+  screenSizer: () => screenSizer,
   sendRequest: () => sendRequest,
   setupVector: () => setupVector,
   squareOverlap: () => squareOverlap,
@@ -753,7 +755,7 @@ var logLevels = {
 };
 var currentLogLevel = { value: logLevels.debug };
 var filterKeywords = [];
-var blockKeywords = ["getRandomWord", "applyCooldowns", "calculateBoundingBox"];
+var blockKeywords = ["getRandomWord", "applyCooldowns", "calculateBoundingBox", "rollingAverage"];
 function log(level = logLevels.debug, message, keywords = [], ...data) {
   if (!Object.values(logLevels).includes(level)) {
     console.error(`[LOG ERROR] Invalid log level: ${level}`);
@@ -837,6 +839,14 @@ function colorFrmRange(c1, c2, percent) {
   }
   const color = "#" + red + green + blue;
   return color;
+}
+function getContrastingColor(hexColor) {
+  const normalizedHex = hexColor.replace(/^#/, "");
+  const r = parseInt(normalizedHex.slice(0, 2), 16);
+  const g = parseInt(normalizedHex.slice(2, 4), 16);
+  const b = parseInt(normalizedHex.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? "#000000" : "#FFFFFF";
 }
 
 // src/test.ts
@@ -6884,6 +6894,126 @@ function setupVectStandards() {
     breaks: getBaseVect(0, 0, 0, 0.5, 1.25)
   };
 }
+
+// src/screenResizer.ts
+var screenSizer = {
+  screenSize: {
+    width: 0,
+    height: 0
+  },
+  resizeGameElementsOnResizeEvent: false,
+  resizeGameElementsOnOrientationEvent: false,
+  gameOffset: { x: 0, y: 0 },
+  gameElements: [],
+  center: { x: 0, y: 0 },
+  setGameElement(elemenet) {
+    this.setGameElements([elemenet.id]);
+  },
+  setGameElements(listOfIds) {
+    const domList = [];
+    for (const id of listOfIds) {
+      const element = document.getElementById(id);
+      if (element) {
+        domList.push(element);
+      }
+    }
+    this.gameElements = domList;
+  },
+  orientationChangeCallback(newScreenSize) {
+    console.log("Orientation changed to:", newScreenSize);
+  },
+  handleOrientation() {
+    const newScreenSize = this.getScreenSize();
+    if (newScreenSize.width !== this.screenSize.width || newScreenSize.height !== this.screenSize.height) {
+      this.screenSize = newScreenSize;
+      this.center = this.getCenter();
+      this.orientationChangeCallback(newScreenSize);
+      if (this.resizeGameElementsOnOrientationEvent || this.resizeGameElementsOnResizeEvent) {
+        this.resizeGame();
+      }
+    }
+  },
+  /**
+   * Get the maximum width and height of the given element or the document by default.
+   * @param element - The element to measure. Defaults to `document.body`.
+   * @returns The width and height of the element or document.
+   */
+  getMaxSize(element) {
+    const target = element || document.body;
+    const inner = document.createElement("p");
+    inner.style.width = "100%";
+    inner.style.height = "100%";
+    inner.style.margin = "0";
+    inner.style.padding = "0";
+    inner.style.border = "none";
+    const outer = document.createElement("div");
+    outer.style.position = "absolute";
+    outer.style.top = "0px";
+    outer.style.left = "0px";
+    outer.style.visibility = "hidden";
+    outer.style.width = "100%";
+    outer.style.height = "100%";
+    outer.style.overflow = "hidden";
+    outer.style.margin = "0";
+    outer.style.padding = "0";
+    outer.style.border = "none";
+    outer.appendChild(inner);
+    target.appendChild(outer);
+    const width = inner.offsetWidth;
+    const height = inner.offsetHeight;
+    target.removeChild(outer);
+    return { width, height };
+  },
+  /**
+   * Get the screen size of the document.
+   * @returns The width and height of the document body.
+   */
+  getScreenSize() {
+    return this.getMaxSize(document.body);
+  },
+  biggestSquare() {
+    const screenSize = this.getScreenSize();
+    const biggestSquare = { ...screenSize };
+    if (biggestSquare.width < biggestSquare.height) {
+      biggestSquare.height = biggestSquare.width;
+    } else if (biggestSquare.width > biggestSquare.height) {
+      biggestSquare.width = biggestSquare.height;
+    }
+    const padX = (screenSize.width - biggestSquare.width) / 2;
+    const padY = (screenSize.height - biggestSquare.height) / 2;
+    this.resizeGame(biggestSquare);
+    this.centerGame(padX, padY);
+    this.gameOffset = { x: padX, y: padY };
+  },
+  resizeGame(screenSize) {
+    for (const element of this.gameElements) {
+      const maxSize = screenSize ? screenSize : this.getMaxSize(element.parentElement);
+      console.log(screenSize, maxSize, element);
+      element.width = maxSize.width;
+      element.height = maxSize.height;
+    }
+  },
+  centerGame(padX, padY) {
+    for (const element of this.gameElements) {
+      element.style.left = `${padX}px`;
+      element.style.top = `${padY}px`;
+    }
+  },
+  getCenter() {
+    return {
+      x: this.screenSize.width / 2,
+      y: this.screenSize.height / 2
+    };
+  },
+  addEventListeners() {
+    window.addEventListener("resize", this.handleOrientation.bind(this), false);
+    window.addEventListener("orientationchange", this.handleOrientation.bind(this), false);
+  },
+  removeEventListeners() {
+    window.removeEventListener("resize", this.handleOrientation.bind(this), false);
+    window.removeEventListener("orientationchange", this.handleOrientation.bind(this), false);
+  }
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   Crono,
@@ -6903,6 +7033,7 @@ function setupVectStandards() {
   expose,
   filterKeywords,
   getColorPair,
+  getContrastingColor,
   getKeyNameByValue,
   getPositionAtCompletion,
   getRandomName,
@@ -6914,6 +7045,7 @@ function setupVectStandards() {
   randomItem,
   removeByIdInPlace,
   rng,
+  screenSizer,
   sendRequest,
   setupVector,
   squareOverlap,

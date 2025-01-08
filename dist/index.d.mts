@@ -155,6 +155,12 @@ declare function getColorPair(): {
     c2: string;
 };
 declare function colorFrmRange(c1: string, c2: string, percent: number): string;
+/**
+* Determines whether a hex color is light or dark and returns a contrasting color (black or white).
+* @param hexColor - The hex color string (e.g., "#FFFFFF" or "FFFFFF").
+* @returns A string representing the contrasting color ("#000000" for black or "#FFFFFF" for white).
+*/
+declare function getContrastingColor(hexColor: string): string;
 
 /**
  * Returns a fun greeting message from LaserMace.
@@ -652,4 +658,34 @@ declare function createRollingAverage(rollingWindowSize: number, maxDeltaPercent
     getAverage(): number;
 };
 
-export { BoundingBox, Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, Vect, Vector, attachOnClick, blockKeywords, calculateBoundingBox, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, randomItem, removeByIdInPlace, rng, sendRequest, setupVector, squareOverlap, storage, sumOfDistances };
+interface ScreenSize {
+    width: number;
+    height: number;
+}
+interface Offset {
+    x: number;
+    y: number;
+}
+interface ScreenSizer {
+    screenSize: ScreenSize;
+    gameOffset: Offset;
+    gameElements: HTMLCanvasElement[];
+    center: Offset;
+    setGameElement(elemenet: HTMLElement): void;
+    setGameElements(listOfIds: string[]): void;
+    orientationChangeCallback(newScreenSize: ScreenSize): void;
+    handleOrientation(): void;
+    getMaxSize(element?: HTMLElement): ScreenSize;
+    getScreenSize(): ScreenSize;
+    biggestSquare(): void;
+    resizeGame(screenSize?: ScreenSize): void;
+    centerGame(padX: number, padY: number): void;
+    getCenter(): Offset;
+    addEventListeners(): void;
+    removeEventListeners(): void;
+    resizeGameElementsOnResizeEvent: boolean;
+    resizeGameElementsOnOrientationEvent: boolean;
+}
+declare const screenSizer: ScreenSizer;
+
+export { BoundingBox, Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, Vect, Vector, attachOnClick, blockKeywords, calculateBoundingBox, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getContrastingColor, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, randomItem, removeByIdInPlace, rng, screenSizer, sendRequest, setupVector, squareOverlap, storage, sumOfDistances };

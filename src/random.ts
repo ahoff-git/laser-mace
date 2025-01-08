@@ -119,3 +119,25 @@ export function getColorPair() {
   
     return color;
   }
+
+  /**
+ * Determines whether a hex color is light or dark and returns a contrasting color (black or white).
+ * @param hexColor - The hex color string (e.g., "#FFFFFF" or "FFFFFF").
+ * @returns A string representing the contrasting color ("#000000" for black or "#FFFFFF" for white).
+ */
+export function getContrastingColor(hexColor: string): string {
+    // Remove the '#' if present
+    const normalizedHex = hexColor.replace(/^#/, "");
+  
+    // Parse the RGB values
+    const r = parseInt(normalizedHex.slice(0, 2), 16);
+    const g = parseInt(normalizedHex.slice(2, 4), 16);
+    const b = parseInt(normalizedHex.slice(4, 6), 16);
+  
+    // Calculate the relative luminance (standard formula)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+    // Return black for light backgrounds, white for dark backgrounds
+    return luminance > 0.5 ? "#000000" : "#FFFFFF";
+  }
+  

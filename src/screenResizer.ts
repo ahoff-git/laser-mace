@@ -143,12 +143,23 @@ getMaxSize(element?: HTMLElement): ScreenSize {
   
     resizeGame(screenSize?: ScreenSize) {
       for (const element of this.gameElements) {
-        const maxSize = screenSize? screenSize : this.getMaxSize(element.parentElement!);
-        console.log(screenSize, maxSize, element);
-        element.width = maxSize.width;
-        element.height = maxSize.height;
+        const maxSize = screenSize ? screenSize : this.getMaxSize(element.parentElement!);
+    
+        // Get computed styles for border sizes
+        const computedStyle = getComputedStyle(element);
+        const borderWidth = {
+          top: parseFloat(computedStyle.borderTopWidth || "0"),
+          right: parseFloat(computedStyle.borderRightWidth || "0"),
+          bottom: parseFloat(computedStyle.borderBottomWidth || "0"),
+          left: parseFloat(computedStyle.borderLeftWidth || "0"),
+        };
+    
+        // Adjust width and height by border widths
+        element.width = maxSize.width - (borderWidth.left + borderWidth.right);
+        element.height = maxSize.height - (borderWidth.top + borderWidth.bottom);
       }
-    },
+    }
+    ,
   
     centerGame(padX: number, padY: number) {
       for (const element of this.gameElements) {

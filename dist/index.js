@@ -649,7 +649,6 @@ __export(src_exports, {
   PeerNetObj: () => PeerNetObj,
   attachOnClick: () => attachOnClick,
   blockKeywords: () => blockKeywords,
-  calculateBoundingBox: () => calculateBoundingBox,
   colorFrmRange: () => colorFrmRange,
   createCanvasBuddy: () => createCanvasBuddy,
   createLazyState: () => createLazyState,
@@ -6249,172 +6248,105 @@ function setCooldown(option, wordType) {
 }
 
 // src/canvasBuddy.ts
-function calculateBoundingBox(x, y, width, height, options = { returnDetails: true }, isCircle = false) {
-  if (!options.returnDetails) {
-    return;
-  }
-  const {
-    rotationAngle = 0,
-    rotationOrigin = "center",
-    anchor = "top-left"
-  } = options;
-  const radians = rotationAngle * Math.PI / 180;
-  const centerX = rotationOrigin === "center" ? x + width / 2 : x;
-  const centerY = rotationOrigin === "center" ? y + height / 2 : y;
-  let anchorX = x;
-  let anchorY = y;
+function adjustForAnchorAndOffset(x, y, width, height, options) {
+  const { anchor = "top-left", offsetX = 0, offsetY = 0 } = options;
+  let adjustedX = x;
+  let adjustedY = y;
   switch (anchor) {
-    case "top-left":
-      break;
     case "top-right":
-      anchorX += width;
+      adjustedX -= width;
       break;
     case "bottom-left":
-      anchorY += height;
+      adjustedY -= height;
       break;
     case "bottom-right":
-      anchorX += width;
-      anchorY += height;
+      adjustedX -= width;
+      adjustedY -= height;
       break;
     case "center":
-      anchorX += width / 2;
-      anchorY += height / 2;
+      adjustedX -= width / 2;
+      adjustedY -= height / 2;
       break;
   }
-  if (isCircle) {
-    const radius = width / 2;
-    return {
-      center: { x: centerX, y: centerY },
-      min: { x: centerX - radius, y: centerY - radius },
-      max: { x: centerX + radius, y: centerY + radius },
-      anchor: { x: anchorX, y: anchorY },
-      topLeft: { x: centerX - radius, y: centerY - radius },
-      topRight: { x: centerX + radius, y: centerY - radius },
-      bottomLeft: { x: centerX - radius, y: centerY + radius },
-      bottomRight: { x: centerX + radius, y: centerY + radius },
-      topCenter: { x: centerX, y: centerY - radius },
-      bottomCenter: { x: centerX, y: centerY + radius },
-      leftCenter: { x: centerX - radius, y: centerY },
-      rightCenter: { x: centerX + radius, y: centerY },
-      dimensions: {
-        width: radius * 2,
-        height: radius * 2
-      }
-    };
-  }
-  const corners = [
-    { x, y },
-    // Top-left
-    { x: x + width, y },
-    // Top-right
-    { x, y: y + height },
-    // Bottom-left
-    { x: x + width, y: y + height }
-    // Bottom-right
-  ];
-  const rotatedCorners = corners.map((corner) => {
-    const dx = corner.x - centerX;
-    const dy = corner.y - centerY;
-    return {
-      x: centerX + dx * Math.cos(radians) - dy * Math.sin(radians),
-      y: centerY + dx * Math.sin(radians) + dy * Math.cos(radians)
-    };
-  });
-  const xs = rotatedCorners.map((corner) => corner.x);
-  const ys = rotatedCorners.map((corner) => corner.y);
-  const retVal = {
-    center: { x: centerX, y: centerY },
-    min: { x: Math.min(...xs), y: Math.min(...ys) },
-    max: { x: Math.max(...xs), y: Math.max(...ys) },
-    anchor: { x: anchorX, y: anchorY },
-    topLeft: rotatedCorners[0],
-    topRight: rotatedCorners[1],
-    bottomLeft: rotatedCorners[2],
-    bottomRight: rotatedCorners[3],
-    topCenter: {
-      x: (rotatedCorners[0].x + rotatedCorners[1].x) / 2,
-      y: rotatedCorners[0].y
-    },
-    bottomCenter: {
-      x: (rotatedCorners[2].x + rotatedCorners[3].x) / 2,
-      y: rotatedCorners[2].y
-    },
-    leftCenter: {
-      x: rotatedCorners[0].x,
-      y: (rotatedCorners[0].y + rotatedCorners[2].y) / 2
-    },
-    rightCenter: {
-      x: rotatedCorners[1].x,
-      y: (rotatedCorners[1].y + rotatedCorners[3].y) / 2
-    },
-    dimensions: {
-      width: Math.abs(Math.max(...xs) - Math.min(...xs)),
-      height: Math.abs(Math.max(...ys) - Math.min(...ys))
-    }
-  };
-  log(logLevels.debug, "CalcBoundingBox ran:", ["calculateBoundingBox", "spam"], retVal);
-  return retVal;
+  return { x: adjustedX + offsetX, y: adjustedY + offsetY };
 }
 function createCanvasBuddy(canvas) {
   const ctx = canvas.getContext("2d");
-  const canvasState = createLazyState({
-    canvasDetails: ["timed", _getCanvasDetails, 1e3]
-  });
-  if (!ctx) {
+  if (!ctx)
     throw new Error("Failed to get 2D context");
-  }
-  function getCanvasDetails() {
-    return canvasState.canvasDetails;
-  }
-  function _getCanvasDetails() {
-    const { width, height } = canvas;
-    const rect = canvas.getBoundingClientRect();
+  const canvasState = createLazyState({ canvasDetails: ["timed", _getCanvasDetails, 1e3] });
+  function calculateBoundingBox(x, y, width, height, options = { returnDetails: true }, isCircle = false) {
+    if (!options.returnDetails)
+      return;
+    applyOptions(options);
+    const { rotationAngle = 0, rotationOrigin = "center", anchor = "top-left" } = options;
+    const radians = rotationAngle * Math.PI / 180;
+    const centerX = rotationOrigin === "center" ? x + width / 2 : x;
+    const centerY = rotationOrigin === "center" ? y + height / 2 : y;
+    if (isCircle) {
+      const radius = width / 2;
+      return {
+        center: { x: centerX, y: centerY },
+        min: { x: centerX - radius, y: centerY - radius },
+        max: { x: centerX + radius, y: centerY + radius },
+        anchor: adjustForAnchorAndOffset(x, y, width, height, options),
+        topLeft: { x: centerX - radius, y: centerY - radius },
+        topRight: { x: centerX + radius, y: centerY - radius },
+        bottomLeft: { x: centerX - radius, y: centerY + radius },
+        bottomRight: { x: centerX + radius, y: centerY + radius },
+        topCenter: { x: centerX, y: centerY - radius },
+        bottomCenter: { x: centerX, y: centerY + radius },
+        leftCenter: { x: centerX - radius, y: centerY },
+        rightCenter: { x: centerX + radius, y: centerY },
+        dimensions: { width: radius * 2, height: radius * 2 }
+      };
+    }
+    const corners = [
+      { x, y },
+      { x: x + width, y },
+      { x, y: y + height },
+      { x: x + width, y: y + height }
+    ];
+    const rotatedCorners = corners.map((corner) => {
+      const dx = corner.x - centerX;
+      const dy = corner.y - centerY;
+      return {
+        x: centerX + dx * Math.cos(radians) - dy * Math.sin(radians),
+        y: centerY + dx * Math.sin(radians) + dy * Math.cos(radians)
+      };
+    });
+    const xs = rotatedCorners.map((corner) => corner.x);
+    const ys = rotatedCorners.map((corner) => corner.y);
     return {
-      width,
-      // Canvas width in pixels
-      height,
-      // Canvas height in pixels
-      location: {
-        top: rect.top,
-        // Distance from the top of the viewport
-        left: rect.left,
-        // Distance from the left of the viewport
-        right: rect.right,
-        // Distance from the left + width
-        bottom: rect.bottom
-        // Distance from the top + height
+      center: { x: centerX, y: centerY },
+      min: { x: Math.min(...xs), y: Math.min(...ys) },
+      max: { x: Math.max(...xs), y: Math.max(...ys) },
+      anchor: adjustForAnchorAndOffset(x, y, width, height, options),
+      topLeft: rotatedCorners[0],
+      topRight: rotatedCorners[1],
+      bottomLeft: rotatedCorners[2],
+      bottomRight: rotatedCorners[3],
+      topCenter: {
+        x: (rotatedCorners[0].x + rotatedCorners[1].x) / 2,
+        y: rotatedCorners[0].y
+      },
+      bottomCenter: {
+        x: (rotatedCorners[2].x + rotatedCorners[3].x) / 2,
+        y: rotatedCorners[2].y
+      },
+      leftCenter: {
+        x: rotatedCorners[0].x,
+        y: (rotatedCorners[0].y + rotatedCorners[2].y) / 2
+      },
+      rightCenter: {
+        x: rotatedCorners[1].x,
+        y: (rotatedCorners[1].y + rotatedCorners[3].y) / 2
+      },
+      dimensions: {
+        width: Math.abs(Math.max(...xs) - Math.min(...xs)),
+        height: Math.abs(Math.max(...ys) - Math.min(...ys))
       }
     };
-  }
-  function applyOptions(options = {}) {
-    ctx.fillStyle = "#000";
-    ctx.globalAlpha = 1;
-    ctx.font = "16px sans-serif";
-    ctx.textAlign = "start";
-    if (options.color)
-      ctx.fillStyle = options.color;
-    if (options.transparency !== void 0) {
-      if (options.transparency < 0 || options.transparency > 1) {
-        console.error(
-          "Transparency must be between 0 and 1. Setting to default (1)."
-        );
-        ctx.globalAlpha = 1;
-      } else {
-        ctx.globalAlpha = options.transparency;
-      }
-    }
-    if (options.fontSize) {
-      if (typeof options.fontSize !== "number" || options.fontSize <= 0) {
-        console.error(
-          "Font size must be a positive number. Setting to default (16px)."
-        );
-        ctx.font = "16px sans-serif";
-      } else {
-        ctx.font = `${options.fontSize}px sans-serif`;
-      }
-    }
-    if (options.textAlign)
-      ctx.textAlign = options.textAlign;
   }
   function handleRotation(x, y, width, height, options, callback) {
     const { rotationAngle = 0, rotationOrigin = "center" } = options;
@@ -6432,34 +6364,40 @@ function createCanvasBuddy(canvas) {
     callback();
     ctx.restore();
   }
-  function drawAnchorPoint(x, y) {
-    ctx.save();
-    ctx.fillStyle = "limegreen";
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+  function applyOptions(options = {}) {
+    ctx.fillStyle = options.color || "#000";
+    ctx.globalAlpha = options.transparency !== void 0 ? Math.max(0, Math.min(1, options.transparency)) : 1;
   }
-  function adjustForAnchorAndOffset(x, y, width, height, options) {
-    const { anchor = "top-left", offsetX = 0, offsetY = 0 } = options;
-    let adjustedPosition = { x, y };
-    switch (anchor) {
-      case "top-right":
-        adjustedPosition = { x: x - width, y };
-        break;
-      case "bottom-left":
-        adjustedPosition = { x, y: y - height };
-        break;
-      case "bottom-right":
-        adjustedPosition = { x: x - width, y: y - height };
-        break;
-      case "center":
-        adjustedPosition = { x: x - width / 2, y: y - height / 2 };
-        break;
+  function applyTextOptions(options = {}) {
+    applyOptions(options);
+    ctx.font = `${options.fontSize || 16}px sans-serif`;
+    ctx.textAlign = options.textAlign || "start";
+  }
+  function drawShape(drawFn, x, y, width, height, options, isCircle = false) {
+    const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(x, y, width, height, options);
+    handleRotation(adjustedX, adjustedY, width, height, options, drawFn);
+    if (options.showAnchor) {
+      ctx.save();
+      ctx.fillStyle = "limegreen";
+      ctx.beginPath();
+      ctx.arc(adjustedX, adjustedY, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
+    return calculateBoundingBox(adjustedX, adjustedY, width, height, options, isCircle);
+  }
+  function _getCanvasDetails() {
+    const { width, height } = canvas;
+    const rect = canvas.getBoundingClientRect();
     return {
-      x: adjustedPosition.x + offsetX,
-      y: adjustedPosition.y + offsetY
+      width,
+      height,
+      location: {
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        bottom: rect.bottom
+      }
     };
   }
   function markBoundingBoxLocations(boundingBox, excludeKeys = []) {
@@ -6532,97 +6470,25 @@ function createCanvasBuddy(canvas) {
   }
   function drawCircle(x, y, radius, options = {}) {
     applyOptions(options);
-    const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(
-      x,
-      y,
-      radius * 2,
-      radius * 2,
-      options
-    );
-    handleRotation(
-      adjustedX - radius,
-      adjustedY - radius,
-      radius * 2,
-      radius * 2,
-      options,
-      () => {
-        ctx.beginPath();
-        ctx.arc(adjustedX, adjustedY, radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    );
-    if (options.showAnchor) {
-      drawAnchorPoint(adjustedX, adjustedY);
-    }
-    return calculateBoundingBox(
-      adjustedX - radius,
-      adjustedY - radius,
-      radius * 2,
-      radius * 2,
-      options,
-      true
-    );
+    return drawShape(() => {
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }, x, y, radius * 2, radius * 2, options, true);
   }
   function drawSquare(x, y, width, options = {}) {
     applyOptions(options);
-    const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(
-      x,
-      y,
-      width,
-      width,
-      options
-    );
-    handleRotation(adjustedX, adjustedY, width, width, options, () => {
-      ctx.fillRect(adjustedX, adjustedY, width, width);
-    });
-    if (options.showAnchor) {
-      drawAnchorPoint(adjustedX, adjustedY);
-    }
-    return calculateBoundingBox(adjustedX, adjustedY, width, width, options);
-  }
-  function drawImage(image, x, y, width, height, options = {}) {
-    const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(
-      x,
-      y,
-      width,
-      height,
-      options
-    );
-    handleRotation(adjustedX, adjustedY, width, height, options, () => {
-      ctx.save();
-      applyOptions(options);
-      ctx.drawImage(image, adjustedX, adjustedY, width, height);
-      ctx.restore();
-    });
-    if (options.showAnchor) {
-      drawAnchorPoint(adjustedX, adjustedY);
-    }
-    return calculateBoundingBox(adjustedX, adjustedY, width, height, options);
+    return drawShape(() => ctx.fillRect(x, y, width, width), x, y, width, width, options);
   }
   function drawText(text, x, y, options = {}) {
-    applyOptions(options);
-    const textWidth = ctx.measureText(text).width;
     const fontSize = options.fontSize || 16;
+    const textWidth = ctx.measureText(text).width;
     const height = fontSize;
-    const { x: adjustedX, y: adjustedY } = adjustForAnchorAndOffset(
-      x,
-      y,
-      textWidth,
-      height,
-      options
-    );
-    const verticalOffset = options.verticalAlign === "middle" ? height / 2 : options.verticalAlign === "bottom" ? height : 0;
-    ctx.fillText(text, adjustedX, adjustedY + verticalOffset);
-    if (options.showAnchor) {
-      drawAnchorPoint(adjustedX, adjustedY);
-    }
-    return calculateBoundingBox(
-      adjustedX,
-      adjustedY,
-      textWidth,
-      height,
-      options
-    );
+    applyTextOptions(options);
+    return drawShape(() => {
+      const verticalOffset = options.verticalAlign === "middle" ? height / 2 : options.verticalAlign === "bottom" ? height : 0;
+      ctx.fillText(text, x, y + verticalOffset);
+    }, x, y, textWidth, height, options);
   }
   function eraseArea(x, y, width, height) {
     ctx.clearRect(x, y, width, height);
@@ -6634,26 +6500,22 @@ function createCanvasBuddy(canvas) {
     const { min, dimensions } = boundingBox;
     ctx.clearRect(min.x, min.y, dimensions.width, dimensions.height);
   }
-  const retObj = {
+  return {
     drawCircle,
     drawSquare,
     drawText,
-    drawImage,
     markBoundingBoxLocations,
     eraseArea,
     clearCanvas,
-    clearBoundingBox
+    clearBoundingBox,
+    calculateBoundingBox,
+    width: canvas.width,
+    height: canvas.height,
+    top: _getCanvasDetails().location.top,
+    left: _getCanvasDetails().location.left,
+    right: _getCanvasDetails().location.right,
+    bottom: _getCanvasDetails().location.bottom
   };
-  defineComputedProperties(retObj, [
-    ["width", () => getCanvasDetails().width],
-    ["height", () => getCanvasDetails().height],
-    ["top", () => getCanvasDetails().location.top],
-    ["left", () => getCanvasDetails().location.left],
-    ["right", () => getCanvasDetails().location.right],
-    ["bottom", () => getCanvasDetails().location.bottom]
-  ]);
-  retObj.width;
-  return retObj;
 }
 
 // src/customSort.ts
@@ -6988,9 +6850,15 @@ var screenSizer = {
   resizeGame(screenSize) {
     for (const element of this.gameElements) {
       const maxSize = screenSize ? screenSize : this.getMaxSize(element.parentElement);
-      console.log(screenSize, maxSize, element);
-      element.width = maxSize.width;
-      element.height = maxSize.height;
+      const computedStyle = getComputedStyle(element);
+      const borderWidth = {
+        top: parseFloat(computedStyle.borderTopWidth || "0"),
+        right: parseFloat(computedStyle.borderRightWidth || "0"),
+        bottom: parseFloat(computedStyle.borderBottomWidth || "0"),
+        left: parseFloat(computedStyle.borderLeftWidth || "0")
+      };
+      element.width = maxSize.width - (borderWidth.left + borderWidth.right);
+      element.height = maxSize.height - (borderWidth.top + borderWidth.bottom);
     }
   },
   centerGame(padX, padY) {
@@ -7020,7 +6888,6 @@ var screenSizer = {
   PeerNetObj,
   attachOnClick,
   blockKeywords,
-  calculateBoundingBox,
   colorFrmRange,
   createCanvasBuddy,
   createLazyState,

@@ -411,6 +411,11 @@ type DrawOptions = {
     showAnchor?: boolean;
     returnDetails?: boolean;
 };
+type TextDrawOptions = GeneralDrawOptions & {
+    fontSize?: number;
+    textAlign?: "left" | "right" | "center";
+    verticalAlign?: "top" | "middle" | "bottom";
+};
 type ShapeDetails = {
     center: {
         x: number;
@@ -465,6 +470,7 @@ type ShapeDetails = {
         height: number;
     };
 };
+type ShapeDetailsWithOptions = ShapeDetails & (DrawOptions | TextDrawOptions);
 type BoundingBox = {
     center: {
         x: number;
@@ -519,69 +525,26 @@ type BoundingBox = {
         height: number;
     };
 } | undefined;
-declare function calculateBoundingBox(x: number, y: number, width: number, height: number, options?: DrawOptions, isCircle?: boolean): {
-    center: {
-        x: number;
-        y: number;
-    };
-    min: {
-        x: number;
-        y: number;
-    };
-    max: {
-        x: number;
-        y: number;
-    };
-    anchor: {
-        x: number;
-        y: number;
-    };
-    topLeft: {
-        x: number;
-        y: number;
-    };
-    topRight: {
-        x: number;
-        y: number;
-    };
-    bottomLeft: {
-        x: number;
-        y: number;
-    };
-    bottomRight: {
-        x: number;
-        y: number;
-    };
-    topCenter: {
-        x: number;
-        y: number;
-    };
-    bottomCenter: {
-        x: number;
-        y: number;
-    };
-    leftCenter: {
-        x: number;
-        y: number;
-    };
-    rightCenter: {
-        x: number;
-        y: number;
-    };
-    dimensions: {
-        width: number;
-        height: number;
-    };
-} | undefined;
+type GeneralDrawOptions = {
+    color?: string;
+    transparency?: number;
+    rotationAngle?: number;
+    rotationOrigin?: "center" | "corner";
+    anchor?: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center";
+    offsetX?: number;
+    offsetY?: number;
+    showAnchor?: boolean;
+    returnDetails?: boolean;
+};
 type CanvasBuddy = {
     drawCircle: (x: number, y: number, radius: number, options?: DrawOptions) => ShapeDetails | undefined;
     drawSquare: (x: number, y: number, width: number, options?: DrawOptions) => ShapeDetails | undefined;
     drawText: (text: string, x: number, y: number, options?: DrawOptions) => ShapeDetails | undefined;
-    drawImage: (image: HTMLImageElement, x: number, y: number, width: number, height: number, options?: DrawOptions) => ShapeDetails | undefined;
     markBoundingBoxLocations: (boundingBox: ShapeDetails, excludeKeys?: Array<ShapeDetails>) => void;
     eraseArea: (x: number, y: number, width: number, height: number) => void;
     clearCanvas: () => void;
     clearBoundingBox: (boundingBox: ShapeDetails) => void;
+    calculateBoundingBox: (x: number, y: number, width: number, height: number, options: GeneralDrawOptions, isCircle?: boolean) => ShapeDetails | undefined;
     width: number;
     height: number;
     top: number;
@@ -688,4 +651,4 @@ interface ScreenSizer {
 }
 declare const screenSizer: ScreenSizer;
 
-export { BoundingBox, Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, Vect, Vector, attachOnClick, blockKeywords, calculateBoundingBox, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getContrastingColor, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, randomItem, removeByIdInPlace, rng, screenSizer, sendRequest, setupVector, squareOverlap, storage, sumOfDistances };
+export { BoundingBox, Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, GeneralDrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, ShapeDetailsWithOptions, TextDrawOptions, Vect, Vector, attachOnClick, blockKeywords, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getContrastingColor, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, randomItem, removeByIdInPlace, rng, screenSizer, sendRequest, setupVector, squareOverlap, storage, sumOfDistances };

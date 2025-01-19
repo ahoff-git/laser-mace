@@ -354,6 +354,10 @@ interface Handlers {
     OnLeaderChange: HandlerObject[];
     OnMyLeaderStatusChange: HandlerObject[];
 }
+declare function newPeerNet(params?: {
+    url?: string;
+    handleMessageFunc?: (senderConn: DataConnectionPlus, msg: MsgType) => void;
+}): PeerNetObjType | null;
 type PeerNetStatusObj = {
     Phase: number;
     Text: string;
@@ -651,4 +655,4 @@ interface ScreenSizer {
 }
 declare const screenSizer: ScreenSizer;
 
-export { BoundingBox, Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, GeneralDrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, ShapeDetailsWithOptions, TextDrawOptions, Vect, Vector, attachOnClick, blockKeywords, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getContrastingColor, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, randomItem, removeByIdInPlace, rng, screenSizer, sendRequest, setupVector, squareOverlap, storage, sumOfDistances };
+export { BoundingBox, Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, GeneralDrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, ShapeDetailsWithOptions, TextDrawOptions, Vect, Vector, attachOnClick, blockKeywords, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getContrastingColor, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, newPeerNet, randomItem, removeByIdInPlace, rng, screenSizer, sendRequest, setupVector, squareOverlap, storage, sumOfDistances };

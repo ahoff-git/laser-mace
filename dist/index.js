@@ -670,6 +670,7 @@ __export(src_exports, {
   greetLaserMace: () => greetLaserMace,
   log: () => log,
   logLevels: () => logLevels,
+  newPeerNet: () => newPeerNet,
   randomItem: () => randomItem,
   removeByIdInPlace: () => removeByIdInPlace,
   rng: () => rng,
@@ -5315,7 +5316,24 @@ var $416260bce337df90$export$ecd1fc136c422448 = class _$416260bce337df90$export$
 };
 var $dd0187d7f28e386f$export$2e2bcd8739ae039 = (0, $416260bce337df90$export$ecd1fc136c422448);
 
-// src/opCon.ts
+// src/peerNet.ts
+function newPeerNet(params) {
+  const handleMessageFunc = params?.handleMessageFunc || void 0;
+  const localURL = process.env.OperatorUrlLocal;
+  const liveURL = process.env.OperatorUrlLive;
+  const operatorURL = params?.url || (document.URL.indexOf("localhost") > -1 ? localURL : liveURL);
+  if (!operatorURL || operatorURL.length < 1) {
+    log(logLevels.error, `Unable to get an operatorURL, please check your env file values for OperatorUrlLocal/OperatorUrlLive or provide a URL manually`, ["newPeerNet"], params);
+    return null;
+  }
+  const PeerNet = PeerNetObj(operatorURL);
+  if (handleMessageFunc) {
+    PeerNet.SetHandleMessage(handleMessageFunc);
+  } else {
+    log(logLevels.debug, "PeerNetObj created but handleMessage not set.", ["newPeerNet"]);
+  }
+  return PeerNet;
+}
 function PeerNetObj(operatorURL) {
   let _OperatorURL = operatorURL;
   let _DisplayName = "";
@@ -5358,7 +5376,7 @@ function PeerNetObj(operatorURL) {
       _operatorThrottle.msgsToSendToOperator.push(msgObj);
     }
   };
-  const newPeerNet = {};
+  const newPeerNet2 = {};
   function expireConnections() {
     const badStates = ["closed", "disconnected", "failed"];
     for (const [connId, conn] of GetActivePeers()) {
@@ -5373,7 +5391,7 @@ function PeerNetObj(operatorURL) {
   function GetDisplayName() {
     return _DisplayName;
   }
-  newPeerNet.GetDisplayName = GetDisplayName;
+  newPeerNet2.GetDisplayName = GetDisplayName;
   function setupPeer() {
     let newPeer = new $dd0187d7f28e386f$export$2e2bcd8739ae039();
     newPeer.on("open", function(peerConnectionString) {
@@ -5476,7 +5494,7 @@ function PeerNetObj(operatorURL) {
       _Handlers[handlerName].push(handler);
     }
   }
-  newPeerNet.SetHandler = SetHandler;
+  newPeerNet2.SetHandler = SetHandler;
   const debugHandlerMessages = false;
   function doHandler(handlerName, ...args) {
     if (typeof args == "undefined") {
@@ -5506,11 +5524,11 @@ function PeerNetObj(operatorURL) {
     setStatus(2, "RoomName Set");
     SendToOperator({ Type: "Check-in", PeerConnectionString: _PeerConnectionString });
   }
-  newPeerNet.Connect = Connect;
+  newPeerNet2.Connect = Connect;
   function Disconnect(roomName) {
     throw new Error("Disconnect doesn't do anything yet...");
   }
-  newPeerNet.Disconnect = Disconnect;
+  newPeerNet2.Disconnect = Disconnect;
   function Send(targetConn, msg) {
     try {
       if (typeof targetConn.PeerConnection == void 0 || !targetConn.Active) {
@@ -5524,19 +5542,19 @@ function PeerNetObj(operatorURL) {
       console.warn(e);
     }
   }
-  newPeerNet.Send = Send;
+  newPeerNet2.Send = Send;
   function ResetName(newName) {
     _DisplayName = newName;
   }
-  newPeerNet.ResetName = ResetName;
+  newPeerNet2.ResetName = ResetName;
   function SetOperatorURL(url) {
     _OperatorURL = url;
   }
-  newPeerNet.SetOperatorURL = SetOperatorURL;
+  newPeerNet2.SetOperatorURL = SetOperatorURL;
   function GetPeers() {
     return _Connections;
   }
-  newPeerNet.GetPeers = GetPeers;
+  newPeerNet2.GetPeers = GetPeers;
   function GetActivePeers() {
     if (!_Connections || typeof _Connections == "undefined") {
       console.warn("_Connections are not set yet. Chill");
@@ -5550,7 +5568,7 @@ function PeerNetObj(operatorURL) {
     });
     return retMap;
   }
-  newPeerNet.GetActivePeers = GetActivePeers;
+  newPeerNet2.GetActivePeers = GetActivePeers;
   function isValidMsg(msg) {
     return typeof msg === "object" && msg !== null && "Type" in msg;
   }
@@ -5676,7 +5694,7 @@ function PeerNetObj(operatorURL) {
   function SetHandleMessage(func) {
     DoHandleMessageFunc = func;
   }
-  newPeerNet.SetHandleMessage = SetHandleMessage;
+  newPeerNet2.SetHandleMessage = SetHandleMessage;
   function UpdateConnectionInfo(infoObj, senderConn) {
     if (_Connections.has(senderConn.ConnId)) {
       deleteConnection(senderConn.ConnId);
@@ -5913,22 +5931,22 @@ function PeerNetObj(operatorURL) {
       HandleMissingLeader();
     }
   }
-  newPeerNet.ForceCheckin = function() {
+  newPeerNet2.ForceCheckin = function() {
     SendToOperator({ Type: "Check-in", PeerConnectionString: _PeerConnectionString });
   };
-  newPeerNet._SendMsgToOperator = function(msg) {
+  newPeerNet2._SendMsgToOperator = function(msg) {
     SendToOperator(msg);
   };
-  newPeerNet.GetPeerId = function() {
+  newPeerNet2.GetPeerId = function() {
     return _PeerConnectionString;
   };
-  newPeerNet.IsLeader = function() {
+  newPeerNet2.IsLeader = function() {
     return _IsLeader === true;
   };
-  newPeerNet.GetOrderNumber = function() {
+  newPeerNet2.GetOrderNumber = function() {
     return _OrderNumber;
   };
-  return newPeerNet;
+  return newPeerNet2;
 }
 
 // src/rndName.ts
@@ -6909,6 +6927,7 @@ var screenSizer = {
   greetLaserMace,
   log,
   logLevels,
+  newPeerNet,
   randomItem,
   removeByIdInPlace,
   rng,

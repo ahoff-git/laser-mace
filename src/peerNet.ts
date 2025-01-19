@@ -1,4 +1,5 @@
 import Peer, { DataConnection } from "peerjs";
+import { log, logLevels } from "./logging";
 // Define a type for the handler functions
 type HandlerFunction = (...args: any[]) => void;
 
@@ -29,6 +30,27 @@ interface Handlers {
     OnLeaderChange: HandlerObject[];
     //If you become to cease being the leader 
     OnMyLeaderStatusChange: HandlerObject[];
+}
+
+export function newPeerNet(params?: {url?: string, handleMessageFunc?: (senderConn: DataConnectionPlus, msg: MsgType) => void}) {
+    const handleMessageFunc = params?.handleMessageFunc || undefined;
+    const localURL = process.env.OperatorUrlLocal;
+    const liveURL = process.env.OperatorUrlLive;
+    const operatorURL = params?.url || ((document.URL.indexOf("localhost") > -1 ? localURL : liveURL));
+
+    if (!operatorURL || operatorURL.length < 1){
+        log(logLevels.error, `Unable to get an operatorURL, please check your env file values for OperatorUrlLocal/OperatorUrlLive or provide a URL manually`, ['newPeerNet'], params)
+        return null;
+    }
+
+    const PeerNet = PeerNetObj(operatorURL);
+    if (handleMessageFunc){
+        PeerNet.SetHandleMessage(handleMessageFunc);
+    }
+    else{
+        log(logLevels.debug, "PeerNetObj created but handleMessage not set.", ['newPeerNet'])
+    }
+    return PeerNet;
 }
 
 export type PeerNetStatusObj = {
@@ -81,7 +103,7 @@ export function PeerNetObj(operatorURL: string): PeerNetObjType {
     let _IsLeader = false;
     let _OrderNumber: number | undefined;
     let _CurrentLeaderId: string | undefined;
-    let _CheckInIntervalHandle: number | undefined;
+    let _CheckInIntervalHandle: string | number | NodeJS.Timeout | undefined;
     let _ExpireConnectionsIntervalHandle = setInterval(expireConnections, 1000);
     let _RoomName: string;
     let _PeerConnectionString: null | string = null;
@@ -139,7 +161,7 @@ export function PeerNetObj(operatorURL: string): PeerNetObjType {
 
     function setupPeer() {
         let newPeer = new Peer();
-        newPeer.on("open", function (peerConnectionString:string) {
+        newPeer.on("open", function (peerConnectionString: string) {
             setPeerConnectionString(peerConnectionString);
             setStatus(1, "PeerConnectionString Set");
         });
@@ -204,7 +226,7 @@ export function PeerNetObj(operatorURL: string): PeerNetObjType {
 
         SendIntroduction(conn);
 
-        conn.PeerConnection.on("data", function (data:any) {
+        conn.PeerConnection.on("data", function (data: any) {
             //THIS CONN DOES NOT UPDATE... SO WE HAVE TO GRAB THE LATEST FROM THE CONN LIST 
             const senderConn = getConnByPeerConnString(conn!.PeerConnectionString!) || conn;
             _HandleMsg(data, senderConn);
@@ -336,7 +358,7 @@ export function PeerNetObj(operatorURL: string): PeerNetObjType {
 
     //Returns a list of peer connections that are active
     function GetActivePeers() {
-        if(!_Connections ||typeof _Connections == 'undefined'){
+        if (!_Connections || typeof _Connections == 'undefined') {
             console.warn("_Connections are not set yet. Chill");
             return new Map();
         }
@@ -616,7 +638,7 @@ export function PeerNetObj(operatorURL: string): PeerNetObjType {
         newConn.on("open", function () {
             handleOutgoingPeerCon(newConn);
         });
-        _Peer.on("error", function (err:any) {
+        _Peer.on("error", function (err: any) {
             if (err.type == 'peer-unavailable') {
                 if (!_Connections.get(conn.ConnId)?.Active) {
                     console.warn(`Peer ${conn.DisplayName} is unavailable @ ${PeerConnectionString}`)
@@ -655,9 +677,9 @@ export function PeerNetObj(operatorURL: string): PeerNetObjType {
         }
         else if (expectedInternalMsgTypesToIgnore.includes(resultObj.Type)) {
             if (resultObj.Error) {
-                if (resultObj.Error == "Who the heck are you?"){
-                    if (_ConnId != resultObj.LeaderIs?.ConnId){
-                        if (resultObj && resultObj.LeaderIs){
+                if (resultObj.Error == "Who the heck are you?") {
+                    if (_ConnId != resultObj.LeaderIs?.ConnId) {
+                        if (resultObj && resultObj.LeaderIs) {
                             setRoomLeader(resultObj.LeaderIs.ConnId)
                         }
                     }

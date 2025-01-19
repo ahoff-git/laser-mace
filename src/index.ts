@@ -6,7 +6,7 @@ export * from './lazyState';
 export * from './chronoTrigger';
 export * from './utils';
 export * from './httpRequests';
-export * from './opCon';
+export * from './peerNet';
 export * from './rndName';
 export * from './canvasBuddy';
 export * from './customSort';

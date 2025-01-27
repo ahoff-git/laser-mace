@@ -878,6 +878,17 @@ function createLazyState(definitions) {
   };
   const proxy = new Proxy({}, {
     get(_, prop) {
+      if (prop === "getChanges") {
+        return (since) => {
+          const changes = {};
+          for (const key in definitions) {
+            if ((timestamps[key] || 0) > since) {
+              changes[key] = proxy[key];
+            }
+          }
+          return changes;
+        };
+      }
       if (typeof prop !== "string" || !(prop in definitions)) {
         throw new Error(`Property '${String(prop)}' is not defined.`);
       }
@@ -913,6 +924,7 @@ function createLazyState(definitions) {
       const definition = definitions[prop];
       if (definition !== null && !Array.isArray(definition)) {
         internalState[prop] = value;
+        timestamps[prop] = Date.now();
         invalidateDependentCaches(prop);
         return true;
       }

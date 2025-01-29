@@ -118,96 +118,107 @@ export type CanvasBuddy = {
   bottom: number;
 }
 
+export function calculateBoundingBox(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  options: GeneralDrawOptions = { returnDetails: true },
+  isCircle: boolean = false
+  ): ShapeDetails | undefined {
+  if (!options.returnDetails) return;
+  const { rotationAngle = 0, rotationOrigin = "center", anchor = "top-left" } = options;
+  const radians = (rotationAngle * Math.PI) / 180;
+  const centerX = rotationOrigin === "center" ? x + width / 2 : x;
+  const centerY = rotationOrigin === "center" ? y + height / 2 : y;
+
+  // Special handling for circles
+  if (isCircle) {
+    const radius = width / 2;
+    return {
+      center: { x: centerX, y: centerY },
+      min: { x: centerX - radius, y: centerY - radius },
+      max: { x: centerX + radius, y: centerY + radius },
+      anchor: adjustForAnchorAndOffset(x, y, width, height, options),
+      topLeft: { x: centerX - radius, y: centerY - radius },
+      topRight: { x: centerX + radius, y: centerY - radius },
+      bottomLeft: { x: centerX - radius, y: centerY + radius },
+      bottomRight: { x: centerX + radius, y: centerY + radius },
+      topCenter: { x: centerX, y: centerY - radius },
+      bottomCenter: { x: centerX, y: centerY + radius },
+      leftCenter: { x: centerX - radius, y: centerY },
+      rightCenter: { x: centerX + radius, y: centerY },
+      dimensions: { width: radius * 2, height: radius * 2 },
+    };
+  }
+
+  const corners = [
+    { x: x, y: y },
+    { x: x + width, y: y },
+    { x: x, y: y + height },
+    { x: x + width, y: y + height },
+  ];
+
+  const rotatedCorners = corners.map((corner) => {
+    const dx = corner.x - centerX;
+    const dy = corner.y - centerY;
+    return {
+      x: centerX + dx * Math.cos(radians) - dy * Math.sin(radians),
+      y: centerY + dx * Math.sin(radians) + dy * Math.cos(radians),
+    };
+  });
+
+  const xs = rotatedCorners.map((corner) => corner.x);
+  const ys = rotatedCorners.map((corner) => corner.y);
+
+  return {
+    center: { x: centerX, y: centerY },
+    min: { x: Math.min(...xs), y: Math.min(...ys) },
+    max: { x: Math.max(...xs), y: Math.max(...ys) },
+    anchor: adjustForAnchorAndOffset(x, y, width, height, options),
+    topLeft: rotatedCorners[0],
+    topRight: rotatedCorners[1],
+    bottomLeft: rotatedCorners[2],
+    bottomRight: rotatedCorners[3],
+    topCenter: {
+      x: (rotatedCorners[0].x + rotatedCorners[1].x) / 2,
+      y: rotatedCorners[0].y,
+    },
+    bottomCenter: {
+      x: (rotatedCorners[2].x + rotatedCorners[3].x) / 2,
+      y: rotatedCorners[2].y,
+    },
+    leftCenter: {
+      x: rotatedCorners[0].x,
+      y: (rotatedCorners[0].y + rotatedCorners[2].y) / 2,
+    },
+    rightCenter: {
+      x: rotatedCorners[1].x,
+      y: (rotatedCorners[1].y + rotatedCorners[3].y) / 2,
+    },
+    dimensions: {
+      width: Math.abs(Math.max(...xs) - Math.min(...xs)),
+      height: Math.abs(Math.max(...ys) - Math.min(...ys)),
+    },
+  };
+}
+
 export function createCanvasBuddy(canvas: HTMLCanvasElement): CanvasBuddy {
   const ctx = canvas.getContext("2d")!;
   if (!ctx) throw new Error("Failed to get 2D context");
 
   const canvasState = createLazyState({ canvasDetails: ["timed", _getCanvasDetails, 1000] });
 
-  function calculateBoundingBox(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    options: GeneralDrawOptions = { returnDetails: true },
-    isCircle: boolean = false
+  function _calculateBoundingBox(
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      options: GeneralDrawOptions = { returnDetails: true },
+      isCircle: boolean = false
   ): ShapeDetails | undefined {
-    if (!options.returnDetails) return;
-    applyOptions(options);
-    const { rotationAngle = 0, rotationOrigin = "center", anchor = "top-left" } = options;
-    const radians = (rotationAngle * Math.PI) / 180;
-    const centerX = rotationOrigin === "center" ? x + width / 2 : x;
-    const centerY = rotationOrigin === "center" ? y + height / 2 : y;
-  
-    // Special handling for circles
-    if (isCircle) {
-      const radius = width / 2;
-      return {
-        center: { x: centerX, y: centerY },
-        min: { x: centerX - radius, y: centerY - radius },
-        max: { x: centerX + radius, y: centerY + radius },
-        anchor: adjustForAnchorAndOffset(x, y, width, height, options),
-        topLeft: { x: centerX - radius, y: centerY - radius },
-        topRight: { x: centerX + radius, y: centerY - radius },
-        bottomLeft: { x: centerX - radius, y: centerY + radius },
-        bottomRight: { x: centerX + radius, y: centerY + radius },
-        topCenter: { x: centerX, y: centerY - radius },
-        bottomCenter: { x: centerX, y: centerY + radius },
-        leftCenter: { x: centerX - radius, y: centerY },
-        rightCenter: { x: centerX + radius, y: centerY },
-        dimensions: { width: radius * 2, height: radius * 2 },
-      };
-    }
-  
-    const corners = [
-      { x: x, y: y },
-      { x: x + width, y: y },
-      { x: x, y: y + height },
-      { x: x + width, y: y + height },
-    ];
-  
-    const rotatedCorners = corners.map((corner) => {
-      const dx = corner.x - centerX;
-      const dy = corner.y - centerY;
-      return {
-        x: centerX + dx * Math.cos(radians) - dy * Math.sin(radians),
-        y: centerY + dx * Math.sin(radians) + dy * Math.cos(radians),
-      };
-    });
-  
-    const xs = rotatedCorners.map((corner) => corner.x);
-    const ys = rotatedCorners.map((corner) => corner.y);
-  
-    return {
-      center: { x: centerX, y: centerY },
-      min: { x: Math.min(...xs), y: Math.min(...ys) },
-      max: { x: Math.max(...xs), y: Math.max(...ys) },
-      anchor: adjustForAnchorAndOffset(x, y, width, height, options),
-      topLeft: rotatedCorners[0],
-      topRight: rotatedCorners[1],
-      bottomLeft: rotatedCorners[2],
-      bottomRight: rotatedCorners[3],
-      topCenter: {
-        x: (rotatedCorners[0].x + rotatedCorners[1].x) / 2,
-        y: rotatedCorners[0].y,
-      },
-      bottomCenter: {
-        x: (rotatedCorners[2].x + rotatedCorners[3].x) / 2,
-        y: rotatedCorners[2].y,
-      },
-      leftCenter: {
-        x: rotatedCorners[0].x,
-        y: (rotatedCorners[0].y + rotatedCorners[2].y) / 2,
-      },
-      rightCenter: {
-        x: rotatedCorners[1].x,
-        y: (rotatedCorners[1].y + rotatedCorners[3].y) / 2,
-      },
-      dimensions: {
-        width: Math.abs(Math.max(...xs) - Math.min(...xs)),
-        height: Math.abs(Math.max(...ys) - Math.min(...ys)),
-      },
-    };
+      applyOptions(options);
+      return calculateBoundingBox(x, y, width, height, options, isCircle);
   }
 
   function handleRotation(

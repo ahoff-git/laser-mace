@@ -570,6 +570,7 @@ type CanvasBuddy = {
     right: number;
     bottom: number;
 };
+declare function calculateBoundingBox(x: number, y: number, width: number, height: number, options?: GeneralDrawOptions, isCircle?: boolean): ShapeDetails | undefined;
 declare function createCanvasBuddy(canvas: HTMLCanvasElement): CanvasBuddy;
 
 type SortingDirection = 'asc' | 'desc';
@@ -669,4 +670,4 @@ interface ScreenSizer {
 }
 declare const screenSizer: ScreenSizer;
 
-export { BoundingBox, Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, GeneralDrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, ShapeDetailsWithOptions, TextDrawOptions, Vect, Vector, attachOnClick, blockKeywords, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getContrastingColor, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, newPeerNet, randomItem, removeByIdInPlace, rng, screenSizer, sendRequest, setupVector, squareOverlap, storage, sumOfDistances };
+export { BoundingBox, Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, GeneralDrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, ShapeDetails, ShapeDetailsWithOptions, TextDrawOptions, Vect, Vector, attachOnClick, blockKeywords, calculateBoundingBox, colorFrmRange, createCanvasBuddy, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getContrastingColor, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, newPeerNet, randomItem, removeByIdInPlace, rng, screenSizer, sendRequest, setupVector, squareOverlap, storage, sumOfDistances };

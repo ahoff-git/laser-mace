@@ -653,7 +653,7 @@ interface ScreenSizer {
     gameOffset: Offset;
     gameElements: HTMLCanvasElement[];
     center: Offset;
-    setGameElement(elemenet: HTMLElement): void;
+    setGameElement(element: HTMLElement): void;
     setGameElements(listOfIds: string[]): void;
     orientationChangeCallback(newScreenSize: ScreenSize): void;
     handleOrientation(): void;

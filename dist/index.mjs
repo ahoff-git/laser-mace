@@ -6758,8 +6758,8 @@ var screenSizer = {
   gameOffset: { x: 0, y: 0 },
   gameElements: [],
   center: { x: 0, y: 0 },
-  setGameElement(elemenet) {
-    this.setGameElements([elemenet.id]);
+  setGameElement(element) {
+    this.setGameElements([element.id]);
   },
   setGameElements(listOfIds) {
     const domList = [];

@@ -13,7 +13,7 @@ interface ScreenSize {
     gameOffset: Offset;
     gameElements: HTMLCanvasElement[];
     center: Offset;
-    setGameElement(elemenet: HTMLElement):void;
+    setGameElement(element: HTMLElement):void;
     setGameElements(listOfIds: string[]): void;
     orientationChangeCallback(newScreenSize: ScreenSize): void;
     handleOrientation(): void;
@@ -40,8 +40,8 @@ interface ScreenSize {
     gameElements: [],
     center: { x: 0, y: 0 },
   
-    setGameElement(elemenet: HTMLElement){
-        this.setGameElements([elemenet.id]);
+    setGameElement(element: HTMLElement){
+        this.setGameElements([element.id]);
     },
     setGameElements(listOfIds: string[]) {
       const domList: HTMLCanvasElement[] = [];

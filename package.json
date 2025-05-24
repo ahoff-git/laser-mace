@@ -13,7 +13,8 @@
     "npm-bump-version-patch": "npm version patch",
     "npm-bump-version-minor": "npm version minor",
     "npm-bump-version-major": "npm version major",
-    "link": "npm link"
+    "link": "npm link",
+    "prepare": "npm run build"
   },
   "keywords": [
     "typescript",

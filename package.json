@@ -14,7 +14,8 @@
     "npm-bump-version-minor": "npm version minor",
     "npm-bump-version-major": "npm version major",
     "link": "npm link",
-    "test": "jest"
+    "test": "jest",
+    "prepare": "npm run build"
   },
   "keywords": [
     "typescript",

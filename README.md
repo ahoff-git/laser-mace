@@ -53,9 +53,14 @@ Laser-Mace is my personal Swiss army knife of tools—a collection of utilities 
 
 ## Installation
 
+Laser-Mace is written in TypeScript and the sources need to be compiled before use.
+
 ```bash
-npm install laser-mace
+npm install
+npm run build # or rely on `npm install` triggering `prepare`
 ```
+
+The `dist/` directory is generated during the build and is excluded from git.
 
 ## Usage
 

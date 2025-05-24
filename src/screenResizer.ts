@@ -25,6 +25,10 @@ interface ScreenSize {
     getCenter(): Offset;
     addEventListeners(): void;
     removeEventListeners(): void;
+    /** Handler bound to `handleOrientation` for resize events */
+    resizeHandler: (event: Event) => void;
+    /** Handler bound to `handleOrientation` for orientation change events */
+    orientationHandler: (event: Event) => void;
     resizeGameElementsOnResizeEvent: boolean;
     resizeGameElementsOnOrientationEvent: boolean;
   }
@@ -39,6 +43,8 @@ interface ScreenSize {
     gameOffset: { x: 0, y: 0 },
     gameElements: [],
     center: { x: 0, y: 0 },
+    resizeHandler: () => {},
+    orientationHandler: () => {},
   
     setGameElement(element: HTMLElement){
         this.setGameElements([element.id]);
@@ -176,13 +182,15 @@ getMaxSize(element?: HTMLElement): ScreenSize {
     },
   
     addEventListeners() {
-      window.addEventListener("resize", this.handleOrientation.bind(this), false);
-      window.addEventListener("orientationchange", this.handleOrientation.bind(this), false);
+      this.resizeHandler = this.handleOrientation.bind(this);
+      this.orientationHandler = this.handleOrientation.bind(this);
+      window.addEventListener("resize", this.resizeHandler, false);
+      window.addEventListener("orientationchange", this.orientationHandler, false);
     },
-  
+
     removeEventListeners() {
-      window.removeEventListener("resize", this.handleOrientation.bind(this), false);
-      window.removeEventListener("orientationchange", this.handleOrientation.bind(this), false);
+      window.removeEventListener("resize", this.resizeHandler, false);
+      window.removeEventListener("orientationchange", this.orientationHandler, false);
     },
   };
   

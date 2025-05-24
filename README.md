@@ -60,7 +60,17 @@ npm install
 npm run build # or rely on `npm install` triggering `prepare`
 ```
 
+
 The `dist/` directory is generated during the build and is excluded from git.
+
+## Testing
+
+Run the unit tests using [Jest](https://jestjs.io/), which is installed as a dev dependency.
+
+```bash
+npm install
+npm test
+```
 
 ## Usage
 

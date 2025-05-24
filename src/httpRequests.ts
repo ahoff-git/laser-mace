@@ -24,13 +24,11 @@ export async function sendRequest<T>(
 
     const noPayload = !payload || Object.keys(payload).length === 0;
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // Timeout in 5s
+
     try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000); // Timeout in 5s
-
         log(logLevels.debug, "Sending payload to URL", ["network", "sendRequest"], { url });
-
-
 
         let response;
         if (noPayload) {
@@ -42,10 +40,8 @@ export async function sendRequest<T>(
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
                 signal: controller.signal,
-            })
+            });
         }
-
-        clearTimeout(timeout);
 
         if (!response.ok) {
             log(logLevels.error, "Request failed", ["network", "sendRequest"], { status: response.status });
@@ -68,12 +64,13 @@ export async function sendRequest<T>(
             dataType = "blob";
         }
 
-        //const result = await response.json();
         log(logLevels.debug, `Request succeeded as "${dataType}"`, ["network", "debug", "sendRequest"], { data });
 
         return data;
     } catch (error) {
         log(logLevels.error, "Error during request", ["network", "error", "sendRequest"], error);
         return undefined;
+    } finally {
+        clearTimeout(timeout);
     }
 }

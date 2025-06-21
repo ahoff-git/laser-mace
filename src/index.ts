@@ -16,3 +16,4 @@ export * from './pointMath';
 export * from './vector';
 export * from './math';
 export * from './screenResizer';
+export * from './fsm';

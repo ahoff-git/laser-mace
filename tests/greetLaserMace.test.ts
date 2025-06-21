@@ -1,7 +1,7 @@
+import test from 'node:test';
+import assert from 'node:assert';
 import { greetLaserMace } from '../src/test';
 
-describe('greetLaserMace', () => {
-  it('returns the greeting string', () => {
-    expect(greetLaserMace()).toBe('Hello from LaserMace!');
-  });
+test('greetLaserMace returns the greeting string', () => {
+  assert.strictEqual(greetLaserMace(), 'Hello from LaserMace!');
 });

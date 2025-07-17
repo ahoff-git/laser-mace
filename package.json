@@ -25,6 +25,7 @@
   "author": "Ka1n0s",
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "^24.0.14",
     "peerjs": "^1.5.4",
     "tsup": "^7.2.0",
     "typescript": "^5.7.2"

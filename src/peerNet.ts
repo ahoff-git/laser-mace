@@ -1,7 +1,14 @@
-import Peer, { DataConnection } from "peerjs";
+import Peer from "peerjs";
 import { log, logLevels } from "./logging";
 // Define a type for the handler functions
 type HandlerFunction = (...args: any[]) => void;
+
+import type PeerInternal from 'peerjs';
+
+type DataConnection = ConstructorParameters<typeof PeerInternal>[0] extends any
+  ? ReturnType<typeof PeerInternal.prototype.connect>
+  : never;
+
 
 // Define a type for the objects stored in the handler arrays
 interface HandlerObject {

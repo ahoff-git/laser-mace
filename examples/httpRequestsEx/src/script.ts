@@ -21,7 +21,8 @@ form.addEventListener("submit", async (event) => {
         const payload = JSON.parse(payloadText); // Parse the payload
         responseDiv.textContent = "Sending request...";
 
-        const result = await sendRequest<any>(url, payload); // Call your function
+        const timeoutMs = 10000; // Allow slow endpoints more time
+        const result = await sendRequest<any>(url, payload, timeoutMs);
 
         if (result) {
             responseDiv.textContent = `Response:\n${JSON.stringify(result, null, 2)}`;

@@ -1106,11 +1106,11 @@ function removeByIdInPlace(array, idToRemove) {
 }
 
 // src/httpRequests.ts
-async function sendRequest(url, payload) {
+async function sendRequest(url, payload, timeoutMs = 5e3) {
   log(logLevels.debug, "Initiating request", ["network", "sendRequest"], { url, payload });
   const noPayload = !payload || Object.keys(payload).length === 0;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5e3);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     log(logLevels.debug, "Sending payload to URL", ["network", "sendRequest"], { url });
     let response;

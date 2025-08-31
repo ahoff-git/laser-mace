@@ -47,7 +47,7 @@ Laser-Mace is my personal Swiss army knife of tools—a collection of utilities 
 
 ### Miscellaneous Utilities
 
-- **sendRequest(url, payload)**: Make HTTP requests with JSON payloads.
+- **sendRequest(url, payload, timeoutMs?)**: Make HTTP requests with JSON payloads. Timeout defaults to `5000` ms.
 - **getKeyNameByValue(obj, value)**: Retrieve an object's key by its value.
 - **attachOnClick(id, fn, params, callback)**: Bind functions to elements by their `id`.
 

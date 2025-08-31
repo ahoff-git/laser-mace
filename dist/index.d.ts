@@ -340,16 +340,21 @@ declare function removeByIdInPlace(array: any[], idToRemove: any): void;
  * @template T - The expected response type.
  * @param {string} url - The endpoint to which the request is sent.
  * @param {Record<string, unknown>} payload - The data to be sent in the request body.
+ * @param {number} [timeoutMs=5000] - Duration before the request is aborted, in milliseconds.
  * @returns {Promise<T | undefined>} A promise resolving to the response of the request, or `undefined` if an error occurs.
  *
  * @example
  * // Example usage:
- * const response = await sendRequest<MyResponseType>("https://api.example.com/data", { key: "value" });
+ * const response = await sendRequest<MyResponseType>(
+ *     "https://api.example.com/data",
+ *     { key: "value" },
+ *     10000,
+ * );
  * if (response) {
  *     console.log("Success:", response);
  * }
  */
-declare function sendRequest<T>(url: string, payload: Record<string, unknown> | undefined): Promise<T | undefined>;
+declare function sendRequest<T>(url: string, payload: Record<string, unknown> | undefined, timeoutMs?: number): Promise<T | undefined>;
 
 type HandlerFunction = (...args: any[]) => void;
 

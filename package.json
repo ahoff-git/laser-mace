@@ -15,6 +15,7 @@
     "npm-bump-version-major": "npm version major",
     "link": "npm link",
     "test": "npx tsc -p tsconfig.tests.json && node --test dist-tests/tests/*.js",
+    "lint": "eslint . --ext .ts --config .eslintrc.json",
     "prepare": "npm run build"
   },
   "keywords": [
@@ -28,6 +29,10 @@
     "@types/node": "^24.0.14",
     "peerjs": "^1.5.4",
     "tsup": "^7.2.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^15.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0"
   }
 }

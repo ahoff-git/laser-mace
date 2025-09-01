@@ -1,4 +1,4 @@
-import PeerInternal from 'peerjs';
+import PeerInternal, { PeerJSOption } from 'peerjs';
 
 /**
  * A utility module for interacting with browser localStorage with added logging support.
@@ -710,4 +710,132 @@ declare function createFSM<T extends object>(config: {
     evaluate(ctx: T, version?: any): string[];
 };
 
-export { BoundingBox, Box, CanvasBuddy, Crono, DataConnectionPlus, DrawOptions, GeneralDrawOptions, MsgType, PeerNetObj, PeerNetObjType, PeerNetStatusObj, Point, Predicate, ShapeDetails, ShapeDetailsWithOptions, TextDrawOptions, Vect, Vector, and, attachOnClick, blockKeywords, calculateBoundingBox, colorFrmRange, createCanvasBuddy, createFSM, createLazyState, createRollingAverage, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getContrastingColor, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, log, logLevels, memo, newPeerNet, not, or, randomItem, removeByIdInPlace, rng, screenSizer, sendRequest, setupVector, squareOverlap, storage, sumOfDistances };
+type PeerId = string;
+type Topic = string;
+type EntityId = string;
+type QoS = 'ff' | 'alo';
+type Addr = {
+    peer?: PeerId;
+    topic?: Topic;
+};
+type Envelope<T = unknown> = {
+    id: string;
+    v: 1;
+    src: PeerId;
+    dst?: PeerId;
+    topic?: Topic;
+    entity?: EntityId;
+    owner?: PeerId | null;
+    type: string;
+    qos: QoS;
+    ttl: number;
+    hop: number;
+    ts: number;
+    payload: T;
+    trace?: PeerId[];
+    sig?: string;
+};
+interface Transport {
+    start(): Promise<void>;
+    stop(): Promise<void>;
+    localId(): PeerId;
+    connectTo(peer: PeerId): Promise<void>;
+    send(peer: PeerId, bytes: Uint8Array): Promise<void>;
+    onData(handler: (peer: PeerId, bytes: Uint8Array) => void): void;
+    neighbors(): Set<PeerId>;
+}
+interface Membership {
+    start(): void;
+    stop(): void;
+    self(): PeerId;
+    peers(): Set<PeerId>;
+    onJoin(h: (p: PeerId) => void): void;
+    onLeave(h: (p: PeerId, reason: 'timeout' | 'graceful') => void): void;
+    onPeersChanged(h: () => void): void;
+}
+interface Router {
+    start(): void;
+    stop(): void;
+    send<T>(env: Envelope<T>): Promise<void>;
+    onReceive<T>(h: (env: Envelope<T>) => void): void;
+}
+interface PubSub {
+    publish<T>(topic: Topic, msg: T, opts?: {
+        qos?: QoS;
+    }): void;
+    subscribe<T>(topic: Topic, handler: (msg: T, meta: Envelope<T>) => void): () => void;
+    join(topic: Topic): void;
+    leave(topic: Topic): void;
+}
+interface Ownership {
+    claim(entity: EntityId, opts?: {
+        ttlMs?: number;
+    }): Promise<'granted' | 'contended' | 'denied'>;
+    release(entity: EntityId): Promise<void>;
+    ownerOf(entity: EntityId): PeerId | null;
+    onChange(entity: EntityId, h: (owner: PeerId | null) => void): () => void;
+}
+interface Codec {
+    encode<T>(env: Envelope<T>): Uint8Array;
+    decode(bytes: Uint8Array): Envelope;
+}
+interface Security {
+    authorize(env: Envelope): boolean;
+}
+type PeerNetOptions = {
+    transport?: Transport;
+    membership?: Membership;
+    router?: Router;
+    pubsub?: PubSub;
+    ownership?: Ownership;
+    codec?: Codec;
+    security?: Security;
+    qosDefaults?: {
+        direct?: QoS;
+        topic?: QoS;
+    };
+    limits?: {
+        maxTtl?: number;
+        maxMsgBytes?: number;
+        inflight?: number;
+    };
+};
+
+type PeerJsOptions = PeerJSOption;
+declare function createPeerJsTransport(opts?: PeerJsOptions): Transport;
+
+declare function createSwimLite(transport: Transport, intervalMs?: number): Membership;
+
+declare function createAdaptiveRouter(transport: Transport, membership: Membership, codec: Codec): Router;
+
+declare function createTopics(router: Router): PubSub;
+
+declare function createNoOpOwnership(): Ownership;
+
+declare function createClaimFirst(membership: Membership): Ownership;
+
+declare function createJsonCodec(): Codec;
+
+declare function createAllowAllSecurity(): Security;
+
+declare function init(opts?: PeerNetOptions): Promise<{
+    id: string;
+    onPeerJoin: (h: (p: PeerId) => void) => void;
+    onPeerLeave: (h: (p: PeerId) => void) => void;
+    onMessageFrom: (peer: PeerId, h: (msg: unknown, meta: Envelope) => void) => void;
+    onMessage: (h: (msg: unknown, meta: Envelope) => void) => void;
+    sendToPeer: (peer: PeerId, payload: unknown, qos?: QoS) => void;
+    routeToPeer: (peer: PeerId, payload: unknown, qos?: QoS) => void;
+    subscribe: (topic: string, handler: (msg: unknown, meta: Envelope) => void) => () => void;
+    publish: (topic: string, msg: unknown, opts?: {
+        qos?: QoS;
+    }) => void;
+    claim: (entity: string) => Promise<"granted" | "contended" | "denied">;
+    release: (entity: string) => Promise<void>;
+    onOwnershipChange: (entity: string, h: (owner: PeerId | null) => void) => () => void;
+    join: (topic: string) => void;
+    leave: (topic: string) => void;
+    shutdown: () => Promise<void>;
+}>;
+
+export { Addr, BoundingBox, Box, CanvasBuddy, Codec, Crono, DataConnectionPlus, DrawOptions, EntityId, Envelope, GeneralDrawOptions, Membership, MsgType, Ownership, PeerId, PeerNetObj, PeerNetObjType, PeerNetOptions, PeerNetStatusObj, Point, Predicate, PubSub, QoS, Router, Security, ShapeDetails, ShapeDetailsWithOptions, TextDrawOptions, Topic, Transport, Vect, Vector, and, attachOnClick, blockKeywords, calculateBoundingBox, colorFrmRange, createAdaptiveRouter, createAllowAllSecurity, createCanvasBuddy, createClaimFirst, createFSM, createJsonCodec, createLazyState, createNoOpOwnership, createPeerJsTransport, createRollingAverage, createSwimLite, createTopics, currentLogLevel, customSort, defineComputedProperties, defineComputedProperty, dist, expose, filterKeywords, getColorPair, getContrastingColor, getKeyNameByValue, getPositionAtCompletion, getRandomName, getRndColor, getSafeValueById, greetLaserMace, init, log, logLevels, memo, newPeerNet, not, or, randomItem, removeByIdInPlace, rng, screenSizer, sendRequest, setupVector, squareOverlap, storage, sumOfDistances };

@@ -29,11 +29,13 @@ export async function init(opts: PeerNetOptions = {}) {
   const security = opts.security || createAllowAllSecurity();
 
   const msgHandlers = new Map<PeerId, (msg: unknown, meta: Envelope) => void>();
+  // Fallback handler when no peer-specific handler exists
+  let defaultHandler: ((msg: unknown, meta: Envelope) => void) | undefined;
 
   router.onReceive((env) => {
     if (!security.authorize(env)) return;
     if (env.dst === membership.self()) {
-      const handler = msgHandlers.get(env.src);
+      const handler = msgHandlers.get(env.src) || defaultHandler;
       handler?.(env.payload, env);
     }
   });
@@ -52,6 +54,10 @@ export async function init(opts: PeerNetOptions = {}) {
 
   function onMessageFrom(peer: PeerId, h: (msg: unknown, meta: Envelope) => void) {
     msgHandlers.set(peer, h);
+  }
+
+  function onMessage(h: (msg: unknown, meta: Envelope) => void) {
+    defaultHandler = h;
   }
 
   function sendToPeer(peer: PeerId, payload: unknown, qos: QoS = 'ff') {
@@ -113,6 +119,7 @@ export async function init(opts: PeerNetOptions = {}) {
     onPeerJoin,
     onPeerLeave,
     onMessageFrom,
+    onMessage,
     sendToPeer,
     routeToPeer,
     subscribe,

@@ -652,10 +652,18 @@ __export(src_exports, {
   blockKeywords: () => blockKeywords,
   calculateBoundingBox: () => calculateBoundingBox,
   colorFrmRange: () => colorFrmRange,
+  createAdaptiveRouter: () => createAdaptiveRouter,
+  createAllowAllSecurity: () => createAllowAllSecurity,
   createCanvasBuddy: () => createCanvasBuddy,
+  createClaimFirst: () => createClaimFirst,
   createFSM: () => createFSM,
+  createJsonCodec: () => createJsonCodec,
   createLazyState: () => createLazyState,
+  createNoOpOwnership: () => createNoOpOwnership,
+  createPeerJsTransport: () => createPeerJsTransport,
   createRollingAverage: () => createRollingAverage,
+  createSwimLite: () => createSwimLite,
+  createTopics: () => createTopics,
   currentLogLevel: () => currentLogLevel,
   customSort: () => customSort,
   defineComputedProperties: () => defineComputedProperties,
@@ -671,6 +679,7 @@ __export(src_exports, {
   getRndColor: () => getRndColor,
   getSafeValueById: () => getSafeValueById,
   greetLaserMace: () => greetLaserMace,
+  init: () => init,
   log: () => log,
   logLevels: () => logLevels,
   memo: () => memo,
@@ -7000,6 +7009,396 @@ function createFSM(config) {
     }
   };
 }
+
+// src/peernet/index.ts
+var import_crypto2 = require("crypto");
+
+// src/peernet/codec/json.ts
+function createJsonCodec() {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  function encode(env) {
+    const json = JSON.stringify(env);
+    return encoder.encode(json);
+  }
+  function decode(bytes) {
+    const json = decoder.decode(bytes);
+    return JSON.parse(json);
+  }
+  return { encode, decode };
+}
+
+// src/peernet/transport/peerjs.ts
+function createPeerJsTransport(opts) {
+  const connections = /* @__PURE__ */ new Map();
+  let peer = null;
+  let dataHandler = null;
+  async function start() {
+    peer = opts ? new $dd0187d7f28e386f$export$2e2bcd8739ae039(opts) : new $dd0187d7f28e386f$export$2e2bcd8739ae039();
+    peer.on("connection", handleConnection);
+    await new Promise((resolve, reject) => {
+      peer?.once("open", () => resolve());
+      peer?.once("error", (err) => reject(err));
+    });
+  }
+  async function stop() {
+    connections.forEach((c) => c.close());
+    connections.clear();
+    peer?.removeAllListeners();
+    peer?.destroy();
+    peer = null;
+  }
+  function localId() {
+    return peer?.id || "";
+  }
+  async function connectTo(target) {
+    if (!peer)
+      throw new Error("transport not started");
+    if (connections.has(target))
+      return;
+    const conn = peer.connect(target);
+    conn.on("open", () => {
+      connections.set(target, conn);
+      conn.on("data", (data) => {
+        if (data instanceof ArrayBuffer) {
+          dataHandler?.(target, new Uint8Array(data));
+        }
+      });
+      conn.on("close", () => connections.delete(target));
+    });
+  }
+  async function send(target, bytes) {
+    const conn = connections.get(target);
+    if (!conn)
+      return;
+    await conn.send(bytes);
+  }
+  function onData(handler) {
+    dataHandler = handler;
+  }
+  function neighbors() {
+    return new Set(connections.keys());
+  }
+  function handleConnection(conn) {
+    const id = conn.peer;
+    connections.set(id, conn);
+    conn.on("data", (data) => {
+      if (data instanceof ArrayBuffer) {
+        dataHandler?.(id, new Uint8Array(data));
+      }
+    });
+    conn.on("close", () => {
+      connections.delete(id);
+    });
+  }
+  return { start, stop, localId, connectTo, send, onData, neighbors };
+}
+
+// src/peernet/membership/swimLite.ts
+var import_events = require("events");
+function createSwimLite(transport, intervalMs = 1e3) {
+  const emitter = new import_events.EventEmitter();
+  let timer = null;
+  let known = /* @__PURE__ */ new Set();
+  function start() {
+    timer = setInterval(poll, intervalMs);
+  }
+  function stop() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+  function self() {
+    return transport.localId();
+  }
+  function peers() {
+    return new Set(known);
+  }
+  function onJoin(h) {
+    emitter.on("join", h);
+  }
+  function onLeave(h) {
+    emitter.on("leave", h);
+  }
+  function onPeersChanged(h) {
+    emitter.on("changed", h);
+  }
+  function poll() {
+    const current = transport.neighbors();
+    for (const p of current) {
+      if (!known.has(p)) {
+        known.add(p);
+        emitter.emit("join", p);
+        emitter.emit("changed");
+      }
+    }
+    for (const p of [...known]) {
+      if (!current.has(p)) {
+        known.delete(p);
+        emitter.emit("leave", p, "timeout");
+        emitter.emit("changed");
+      }
+    }
+  }
+  return { start, stop, self, peers, onJoin, onLeave, onPeersChanged };
+}
+
+// src/peernet/routing/adaptiveRouter.ts
+function createAdaptiveRouter(transport, membership, codec) {
+  const seen = /* @__PURE__ */ new Map();
+  const receivers = /* @__PURE__ */ new Set();
+  function start() {
+    transport.onData(handleData);
+  }
+  function stop() {
+    transport.onData(() => {
+    });
+    seen.clear();
+  }
+  async function send(env) {
+    const bytes = codec.encode(env);
+    if (env.dst && transport.neighbors().has(env.dst)) {
+      await transport.connectTo(env.dst);
+      await transport.send(env.dst, bytes);
+      return;
+    }
+    for (const n of membership.peers()) {
+      if (n !== env.src) {
+        transport.send(n, bytes);
+      }
+    }
+  }
+  function onReceive(h) {
+    receivers.add(h);
+  }
+  function handleData(peer, bytes) {
+    const env = codec.decode(bytes);
+    if (seen.has(env.id))
+      return;
+    seen.set(env.id, Date.now());
+    if (env.dst && env.dst !== membership.self()) {
+      if (env.hop < env.ttl) {
+        env.hop += 1;
+        send(env).catch(() => {
+        });
+      }
+      return;
+    }
+    for (const h of receivers)
+      h(env);
+  }
+  return { start, stop, send, onReceive };
+}
+
+// src/peernet/pubsub/topics.ts
+var import_crypto = require("crypto");
+function createTopics(router) {
+  const subs = /* @__PURE__ */ new Map();
+  router.onReceive((env) => {
+    if (!env.topic)
+      return;
+    const handlers = subs.get(env.topic);
+    if (!handlers)
+      return;
+    handlers.forEach((h) => h(env.payload, env));
+  });
+  function publish(topic, msg, opts) {
+    const env = {
+      id: (0, import_crypto.randomUUID)(),
+      v: 1,
+      src: "",
+      topic,
+      type: "pub",
+      qos: opts?.qos || "ff",
+      ttl: 3,
+      hop: 0,
+      ts: Date.now(),
+      payload: msg
+    };
+    router.send(env).catch(() => {
+    });
+  }
+  function subscribe(topic, handler) {
+    const set = subs.get(topic) || /* @__PURE__ */ new Set();
+    set.add(handler);
+    subs.set(topic, set);
+    return () => {
+      set.delete(handler);
+    };
+  }
+  function join(_topic) {
+  }
+  function leave(_topic) {
+  }
+  return { publish, subscribe, join, leave };
+}
+
+// src/peernet/ownership/noOp.ts
+function createNoOpOwnership() {
+  async function claim() {
+    return "granted";
+  }
+  async function release() {
+  }
+  function ownerOf() {
+    return null;
+  }
+  function onChange(_entity, _h) {
+    return () => {
+    };
+  }
+  return { claim, release, ownerOf, onChange };
+}
+
+// src/peernet/security/allowAll.ts
+function createAllowAllSecurity() {
+  function authorize(_env) {
+    return true;
+  }
+  return { authorize };
+}
+
+// src/peernet/ownership/claimFirst.ts
+var import_events2 = require("events");
+function createClaimFirst(membership) {
+  const owners = /* @__PURE__ */ new Map();
+  const emitter = new import_events2.EventEmitter();
+  async function claim(entity) {
+    const selfId = membership.self();
+    const current = owners.get(entity);
+    if (!current) {
+      owners.set(entity, selfId);
+      emitter.emit(entity, selfId);
+      return "granted";
+    }
+    if (current === selfId)
+      return "granted";
+    if (selfId < current) {
+      owners.set(entity, selfId);
+      emitter.emit(entity, selfId);
+      return "contended";
+    }
+    return "denied";
+  }
+  async function release(entity) {
+    const selfId = membership.self();
+    const current = owners.get(entity);
+    if (current === selfId) {
+      owners.delete(entity);
+      emitter.emit(entity, null);
+    }
+  }
+  function ownerOf(entity) {
+    return owners.get(entity) ?? null;
+  }
+  function onChange(entity, h) {
+    emitter.on(entity, h);
+    return () => emitter.off(entity, h);
+  }
+  return { claim, release, ownerOf, onChange };
+}
+
+// src/peernet/index.ts
+async function init(opts = {}) {
+  const codec = opts.codec || createJsonCodec();
+  const transport = opts.transport || createPeerJsTransport();
+  await transport.start();
+  const membership = opts.membership || createSwimLite(transport);
+  membership.start();
+  const router = opts.router || createAdaptiveRouter(transport, membership, codec);
+  router.start();
+  const pubsub = opts.pubsub || createTopics(router);
+  const ownership = opts.ownership || createNoOpOwnership();
+  const security = opts.security || createAllowAllSecurity();
+  const msgHandlers = /* @__PURE__ */ new Map();
+  let defaultHandler;
+  router.onReceive((env) => {
+    if (!security.authorize(env))
+      return;
+    if (env.dst === membership.self()) {
+      const handler = msgHandlers.get(env.src) || defaultHandler;
+      handler?.(env.payload, env);
+    }
+  });
+  function id() {
+    return membership.self();
+  }
+  function onPeerJoin(h) {
+    membership.onJoin(h);
+  }
+  function onPeerLeave(h) {
+    membership.onLeave((p) => h(p));
+  }
+  function onMessageFrom(peer, h) {
+    msgHandlers.set(peer, h);
+  }
+  function onMessage(h) {
+    defaultHandler = h;
+  }
+  function sendToPeer(peer, payload, qos = "ff") {
+    const env = {
+      id: (0, import_crypto2.randomUUID)(),
+      v: 1,
+      src: membership.self(),
+      dst: peer,
+      type: "msg",
+      qos,
+      ttl: 5,
+      hop: 0,
+      ts: Date.now(),
+      payload
+    };
+    router.send(env).catch(() => {
+    });
+  }
+  function routeToPeer(peer, payload, qos = "ff") {
+    sendToPeer(peer, payload, qos);
+  }
+  function subscribe(topic, handler) {
+    return pubsub.subscribe(topic, handler);
+  }
+  function publish(topic, msg, opts2) {
+    pubsub.publish(topic, msg, opts2);
+  }
+  async function claim(entity) {
+    return ownership.claim(entity);
+  }
+  async function release(entity) {
+    return ownership.release(entity);
+  }
+  function onOwnershipChange(entity, h) {
+    return ownership.onChange(entity, h);
+  }
+  function join(topic) {
+    pubsub.join(topic);
+  }
+  function leave(topic) {
+    pubsub.leave(topic);
+  }
+  async function shutdown() {
+    router.stop();
+    membership.stop();
+    await transport.stop();
+  }
+  return {
+    id: id(),
+    onPeerJoin,
+    onPeerLeave,
+    onMessageFrom,
+    onMessage,
+    sendToPeer,
+    routeToPeer,
+    subscribe,
+    publish,
+    claim,
+    release,
+    onOwnershipChange,
+    join,
+    leave,
+    shutdown
+  };
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   Crono,
@@ -7009,10 +7408,18 @@ function createFSM(config) {
   blockKeywords,
   calculateBoundingBox,
   colorFrmRange,
+  createAdaptiveRouter,
+  createAllowAllSecurity,
   createCanvasBuddy,
+  createClaimFirst,
   createFSM,
+  createJsonCodec,
   createLazyState,
+  createNoOpOwnership,
+  createPeerJsTransport,
   createRollingAverage,
+  createSwimLite,
+  createTopics,
   currentLogLevel,
   customSort,
   defineComputedProperties,
@@ -7028,6 +7435,7 @@ function createFSM(config) {
   getRndColor,
   getSafeValueById,
   greetLaserMace,
+  init,
   log,
   logLevels,
   memo,

@@ -46,7 +46,8 @@ export function createPeerJsTransport(opts?: PeerJsOptions): Transport {
 
   async function send(target: PeerId, bytes: Uint8Array) {
     const conn = connections.get(target);
-    conn?.send(bytes);
+    if (!conn) return;
+    await conn.send(bytes);
   }
 
   function onData(handler: (peer: PeerId, bytes: Uint8Array) => void) {
